@@ -412,7 +412,11 @@ export class Battle {
 
   private palOf(f: Fighter) {
     if (f.def.palette) {
-      return { body: f.def.palette.body, head: f.def.palette.head };
+      return {
+        body: f.def.palette.body,
+        head: f.def.palette.head,
+        accent: f.def.palette.accent,
+      };
     }
     return THOR_PALETTE;
   }
