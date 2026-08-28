@@ -29,6 +29,8 @@ export interface CombatantState {
   comboScaling: number;
   /** Yerde mi (LAUNCHED sonrası). */
   airborne: boolean;
+  /** Hasar azaltma oranı (0-1). */
+  armor: number;
   /** Air-tight hitstun while airborne. */
 }
 
@@ -155,7 +157,9 @@ export class CombatEngine {
       DAMAGE_SCALE_MIN,
       1 - target.comboHits * DAMAGE_SCALE_STEP,
     );
-    const dealt = Math.round(baseDamage * scaling);
+    // Zırh: hasarı azaltır.
+    const armored = baseDamage * (1 - (target.armor ?? 0));
+    const dealt = Math.max(1, Math.round(armored * scaling));
     target.hp = Math.max(0, target.hp - dealt);
     if (comboIncrement) target.comboHits++;
     return { dealt, scaling };

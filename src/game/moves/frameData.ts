@@ -81,6 +81,7 @@ export const THOR: CharacterDef = {
   maxHp: 250,
   maxMeter: 100,
   speed: 3.2,
+  armor: 0.15,
   hurtbox: { x: 44, y: 84 },
   groundLevel: 0, // dinamik olarak sahne ayarlar
   attacks: THOR_ATTACKS,
@@ -144,6 +145,7 @@ export const ORC: CharacterDef = {
   maxHp: 180,
   maxMeter: 100,
   speed: 2.2,
+  armor: 0.18,
   hurtbox: { x: 52, y: 90 },
   groundLevel: 0,
   attacks: ORC_ATTACKS,
@@ -159,6 +161,7 @@ const goblin = {
   classLabel: "Zayıf Sürü Hayvanı",
   maxHp: 80,
   speed: 3.4,
+  armor: 0.05,
   hurtbox: { x: 36, y: 60 },
 };
 
@@ -168,6 +171,7 @@ const skeleton = {
   classLabel: "Hızlı Kılıçlı",
   maxHp: 120,
   speed: 3.0,
+  armor: 0.08,
   hurtbox: { x: 40, y: 76 },
 };
 
@@ -177,6 +181,7 @@ const troll = {
   classLabel: "Ağır Hasar",
   maxHp: 260,
   speed: 1.7,
+  armor: 0.14,
   hurtbox: { x: 60, y: 96 },
 };
 
@@ -186,6 +191,7 @@ const giant = {
   classLabel: "Boss Sınıfı",
   maxHp: 420,
   speed: 1.3,
+  armor: 0.22,
   hurtbox: { x: 74, y: 120 },
 };
 

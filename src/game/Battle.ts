@@ -6,7 +6,7 @@ import { THOR, ORC } from "./moves/frameData";
 import { AI } from "./AI";
 import { KeyboardInput } from "./inputSource";
 import { DungeonManager } from "./DungeonManager";
-import { FighterState } from "./types";
+import { FighterState, CharacterDef } from "./types";
 import { RollbackNetcode } from "./network/rollback";
 
 export enum BattleMode {
@@ -69,22 +69,31 @@ export class Battle {
   constructor(
     private canvas: HTMLCanvasElement,
     mode: BattleMode,
+    playerDef?: CharacterDef,
+    opponentDef?: CharacterDef,
   ) {
     this.mode = mode;
     this.renderer = new Renderer(canvas);
     this.renderer.resize(canvas.width, canvas.height);
 
-    // Oyuncu: Thor.
-    this.p1 = new Fighter(THOR, this.engine, this.hitboxes, canvas.width * 0.35);
+    // Oyuncu (seçilen karakter; yoksa Thor varsayılan).
+    const p1Def = playerDef ?? THOR;
+    this.p1 = new Fighter(p1Def, this.engine, this.hitboxes, canvas.width * 0.35);
+    this.attachAbilityHandler(this.p1);
 
     if (mode === BattleMode.PVP) {
-      // İkinci oyuncu yerleşik (aynı klavye — demo: farklı tuş seti simüle).
-      this.p2 = new Fighter(THOR, this.engine, this.hitboxes, canvas.width * 0.7);
+      // İkinci oyuncu (seçilen karakter; yoksa Thor varsayılan).
+      const p2Def = opponentDef ?? THOR;
+      this.p2 = new Fighter(p2Def, this.engine, this.hitboxes, canvas.width * 0.7);
       this.p2.facing = -1;
+      this.attachAbilityHandler(this.p2);
       this.rollback = new RollbackNetcode([this.p1, this.p2]);
     } else if (mode === BattleMode.PVE) {
-      this.p2 = new Fighter(ORC, this.engine, this.hitboxes, canvas.width * 0.72);
+      // PvE rakibi: seçilen ya da varsayılan Orc.
+      const p2Def = opponentDef ?? ORC;
+      this.p2 = new Fighter(p2Def, this.engine, this.hitboxes, canvas.width * 0.72);
       this.p2.facing = -1;
+      this.attachAbilityHandler(this.p2);
       this.ai = new AI(this.p2, this.p1);
     } else {
       // Dungeon — canavarlar DungeonManager tarafından spawn edilir.
@@ -102,6 +111,14 @@ export class Battle {
 
     // Klavye oyuncu-1'e bağlanır.
     this.inputs = new KeyboardInput(this.p1.inputs);
+  }
+
+  /** Fighter'a kaynak CharacterData varsa SpecialAbilityHandler bağlar. */
+  private attachAbilityHandler(f: Fighter): void {
+    const data = f.def.characterData;
+    if (data) {
+      f.specialAbility.setup(data);
+    }
   }
 
   setHudListener(fn: (h: HudState) => void): void {
@@ -393,6 +410,13 @@ export class Battle {
     f.combat.meter = Math.min(f.combat.maxMeter, f.combat.meter + 0.05);
   }
 
+  private palOf(f: Fighter) {
+    if (f.def.palette) {
+      return { body: f.def.palette.body, head: f.def.palette.head };
+    }
+    return THOR_PALETTE;
+  }
+
   private render(): void {
     const r = this.renderer;
     r.clear();
@@ -401,7 +425,7 @@ export class Battle {
 
     if (this.mode === BattleMode.DUNGEON) {
       r.drawGround(ground, "#2c2a1e");
-      r.drawFighter(this.p1, THOR_PALETTE);
+      r.drawFighter(this.p1, this.palOf(this.p1));
       const dm = this.dungeon!;
       for (const m of dm.getMonsters()) {
         if (!m.alive) continue;
@@ -412,12 +436,14 @@ export class Battle {
       this.renderActives();
     } else {
       r.drawGround(ground);
-      r.drawFighter(this.p1, THOR_PALETTE);
+      r.drawFighter(this.p1, this.palOf(this.p1));
       if (this.p2) {
         const pal =
-          this.p2.def.id === "orc"
-            ? MONSTER_PALETTES.orc
-            : { body: "#a0443c", head: "#7a2f28" };
+          this.p2.def.palette
+            ? { body: this.p2.def.palette.body, head: this.p2.def.palette.head }
+            : this.p2.def.id === "orc"
+              ? MONSTER_PALETTES.orc
+              : { body: "#a0443c", head: "#7a2f28" };
         r.drawFighter(this.p2, pal);
       }
       this.renderActives();

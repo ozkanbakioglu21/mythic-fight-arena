@@ -8,6 +8,7 @@ import {
 import { InputManager } from "./InputManager";
 import { CombatEngine, CombatantState } from "./CombatEngine";
 import { HitboxManager, localToWorld, WorldHitbox } from "./HitboxManager";
+import { SpecialAbilityHandler } from "./characters/SpecialAbilityHandler";
 
 export interface FighterPose {
   state: FighterState;
@@ -47,6 +48,8 @@ export class Fighter {
   pendingEffect: string | null = null;
   /** Attack boyunca active-frame hitbox spawn edildi mi. */
   private activeBoxSpawned = false;
+  /** Karakter pasif/ultimate yetenek handler'ı. */
+  readonly specialAbility: SpecialAbilityHandler;
 
   constructor(
     def: CharacterDef,
@@ -56,6 +59,7 @@ export class Fighter {
   ) {
     this.def = def;
     this.position = { x: startX, y: def.groundLevel };
+    this.specialAbility = new SpecialAbilityHandler(this);
     this.combat = {
       hp: def.maxHp,
       maxHp: def.maxHp,
@@ -71,6 +75,7 @@ export class Fighter {
       comboHits: 0,
       comboScaling: 1,
       airborne: false,
+      armor: def.armor,
     };
   }
 

@@ -92,9 +92,14 @@ export interface CharacterDef {
   maxHp: number;
   maxMeter: number;
   speed: number;
+  armor: number; // 0-1 hasar azaltma
   hurtbox: Vec2; // genişlik, yükseklik
   groundLevel: number;
   attacks: Record<string, AttackDef>;
+  /** Görsel kimlik (varsa). */
+  palette?: { body: string; head: string; accent: string };
+  /** Kaynak CharacterData (veri şemasına bağlantı). */
+  characterData?: CharacterData;
 }
 
 /** 6 frame input buffer girişi. */
@@ -102,4 +107,67 @@ export interface BufferedInput {
   action: InputAction;
   age: number; // frame cinsinden kaç kare önce basıldı
   priority: InputPriority;
+}
+
+// ---------------------------------------------------------------------------
+// Karakter kadrosu veri yapısı
+// ---------------------------------------------------------------------------
+
+/** Karakterin bağlı olduğu mitoloji panteonu. */
+export enum Pantheon {
+  GREEK = "GREEK",
+  EGYPTIAN = "EGYPTIAN",
+  NORSE = "NORSE",
+  TURKIC = "TURKIC",
+  JAPANESE = "JAPANESE",
+}
+
+/** Oynanış sınıfı / archetype. */
+export enum Archetype {
+  RUSHDOWN = "RUSHDOWN",
+  ZONER = "ZONER",
+  GRAPPLER = "GRAPPLER",
+  BRAWLER = "BRAWLER",
+  CROWD_CONTROL = "CROWD_CONTROL",
+  AERIAL = "AERIAL",
+  STANCE = "STANCE",
+  BEAST = "BEAST",
+  TANK = "TANK",
+  NECROMANCER = "NECROMANCER",
+}
+
+/** Temel stat bloğu. */
+export interface BaseStats {
+  hp: number;
+  attackPower: number;
+  movementSpeed: number;
+  armor: number; // 0-1 arası hasar azaltma yüzdesi
+}
+
+/** Pasif / Ultimate yetenek tanımı. */
+export interface AbilityDef {
+  name: string;
+  description: string;
+}
+
+/**
+ * CharacterData — kullanıcı tarafından istenen 5 ana alanı içeren
+ * ve oyuna bağlı oynanabilirlik alanlarıyla genişletilmiş karakter şeması.
+ */
+export interface CharacterData {
+  /** Benzersiz tanımlayıcı (e.g. "achilles"). */
+  id: string;
+  characterName: string;
+  pantheon: Pantheon;
+  archetype: Archetype;
+  passiveAbilityName: string;
+  passiveDescription: string;
+  ultimateName: string;
+  ultimateDescription: string;
+  baseStats: BaseStats;
+  /** Oynanabilirlik: kit şablonu ve görsel kimlik. */
+  kitId: string;
+  palette: { body: string; head: string; accent: string };
+  /** Oynanabilir frame data seti (CharacterDef'e bağlanır). */
+  moveSet: Record<string, AttackDef>;
 }
