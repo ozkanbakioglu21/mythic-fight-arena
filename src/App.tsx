@@ -1,100 +1,40 @@
 import { useEffect, useRef, useState } from "react";
-import { Battle, BattleMode, HudState } from "./game/Battle";
-import { CharacterDef } from "./game/types";
-import { toCharacterDef } from "./game/characters/toCharacterDef";
-import { CharacterDatabaseManager } from "./game/characters/CharacterDatabaseManager";
-import { TitleScreen } from "./ui/TitleScreen";
-import { CharacterSelectScreen } from "./ui/CharacterSelect";
-import { BattleHud } from "./ui/BattleHud";
-import { ResultsOverlay } from "./ui/ResultsOverlay";
-
-type Screen =
-  | { kind: "title" }
-  | { kind: "select"; mode: BattleMode }
-  | { kind: "battle"; mode: BattleMode; p1Def: CharacterDef; p2Def: CharacterDef | null };
+import { Game, HudState } from "./game/Game";
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>({ kind: "title" });
-  const [hud, setHud] = useState<HudState | null>(null);
-  const [winner, setWinner] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const battleRef = useRef<Battle | null>(null);
+  const gameRef = useRef<Game | null>(null);
+  const [hud, setHud] = useState<HudState | null>(null);
 
   useEffect(() => {
-    if (screen.kind !== "battle") return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-
-    const battle = new Battle(canvas, screen.mode, screen.p1Def, screen.p2Def ?? undefined);
-    battleRef.current = battle;
-    battle.setHudListener(setHud);
-    battle.setMatchEndListener((w) => setWinner(w));
-    battle.start();
-
+    const game = new Game(canvas);
+    gameRef.current = game;
+    game.onHud = setHud;
+    game.start();
     return () => {
-      battle.stop();
-      battleRef.current = null;
-      setHud(null);
-      setWinner(null);
+      game.stop();
+      gameRef.current = null;
     };
-  }, [screen]);
-
-  const handleStartBattle = (p1Id: string, p2Id: string) => {
-    if (screen.kind !== "select") return;
-    const db = CharacterDatabaseManager.instance;
-    const d1 = db.getById(p1Id);
-    const d2 = db.getById(p2Id);
-    if (!d1) return;
-    const p1Def = toCharacterDef(d1);
-    const p2Def = d2 ? toCharacterDef(d2) : null;
-    setScreen({ kind: "battle", mode: screen.mode, p1Def, p2Def });
-  };
-
-  const handleRematch = () => {
-    setWinner(null);
-    setHud(null);
-    setScreen((s) => (s.kind === "battle" ? { ...s } : s));
-  };
-
-  const handleExit = () => {
-    setScreen({ kind: "title" });
-  };
-
-  if (screen.kind === "title") {
-    return (
-      <TitleScreen
-        onSelect={(mode) => setScreen({ kind: "select", mode })}
-      />
-    );
-  }
-
-  if (screen.kind === "select") {
-    return (
-      <CharacterSelectScreen
-        onSelect={handleStartBattle}
-        onBack={() => setScreen({ kind: "title" })}
-      />
-    );
-  }
+  }, []);
 
   return (
     <div className="game-shell">
       <div className="arena">
-        <canvas
-          ref={canvasRef}
-          width={1280}
-          height={720}
-          className="arena-canvas"
-        />
-        {hud && <BattleHud hud={hud} />}
-        {winner && (
-          <ResultsOverlay
-            winner={winner}
-            score={hud?.dungeon?.score}
-            onRematch={handleRematch}
-            onExit={handleExit}
-          />
+        <canvas ref={canvasRef} className="arena-canvas" />
+        {hud && hud.scene === "room" && (
+          <div className="hud">
+            <div className="hud-room">{hud.roomName}</div>
+            <div className="hud-progress">
+              Oda {hud.roomIndex + 1} / {hud.roomTotal}
+            </div>
+            <div className="hud-hint">{hud.roomHint}</div>
+          </div>
         )}
+      </div>
+      <div className="footnote">
+        Fare ile oyna · Plakalara bas, sembolleri takip et, bilmeceleri çöz
       </div>
     </div>
   );
