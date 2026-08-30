@@ -24,10 +24,12 @@ export interface HudState {
   selected: number;
   won: boolean;
   stuck: boolean;
+  level: number;
+  levelName: string;
 }
 
 // Göktürk rünleri (Orhun alfabesi). Her biri bir "aile" = 4 taş.
-const RUNES = ["𐰀", "𐰆", "𐰉", "𐰒", "𐰤", "𐰞", "𐰱", "𐰾"];
+const RUNES = ["𐰀", "𐰆", "𐰉", "𐰒", "𐰤", "𐰞", "𐰱", "𐰾", "𐰋", "𐰑", "𐰚", "𐰃"];
 const RUNE_COLORS = [
   "#e05a3a",
   "#d4af37",
@@ -37,11 +39,39 @@ const RUNE_COLORS = [
   "#e07a3a",
   "#5c8ca8",
   "#7a5cc8",
+  "#c85c3a",
+  "#2fb98f",
+  "#d47a2a",
+  "#4a9ee0",
 ];
 
 const TILE_W = 58;
 const TILE_H = 94;
 const GAP = 8;
+
+// Seviye dizimleri. Her hücre 2 katman taş (üst açık, alt kapalı) alır,
+// böylece her seviye her zaman çözülebilir. Hücre sayısı = rün sayısı * 2.
+const LEVELS: Array<{ name: string; cells: Array<[number, number]>; bg: [string, string] }> =
+  [
+    { name: "Başlangıç", cells: rectShape(2, 4), bg: ["#0e2433", "#16384a"] },
+    { name: "Çerçeve", cells: frameShape(4, 4), bg: ["#14233d", "#20314f"] },
+    { name: "Kare", cells: rectShape(4, 4), bg: ["#0d2e33", "#1a4650"] },
+    { name: "Geniş Alan", cells: rectShape(5, 4), bg: ["#271f3f", "#3a2a53"] },
+    { name: "Zirve", cells: rectShape(6, 4), bg: ["#3a1f2b", "#542d3d"] },
+  ];
+
+function rectShape(cols: number, rows: number): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) out.push([c, r]);
+  return out;
+}
+function frameShape(cols: number, rows: number): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      if (r === 0 || r === rows - 1 || c === 0 || c === cols - 1) out.push([c, r]);
+  return out;
+}
 
 export class Game {
   private ctx: CanvasRenderingContext2D;
@@ -55,6 +85,7 @@ export class Game {
   private seconds = 0;
   private won = false;
   private history: Array<{ a: number; b: number }> = [];
+  private levelIndex = 0;
 
   onHud?: (h: HudState) => void;
 
@@ -97,12 +128,20 @@ export class Game {
   };
 
   // ---- Yerleşim ----
+  private level(): { name: string; cells: Array<[number, number]>; bg: [string, string] } {
+    return LEVELS[this.levelIndex % LEVELS.length];
+  }
+
   private buildLayout(): void {
-    // 4x4 hücre, her hücrede 2 katman taş -> 32 taş.
-    // Her sembol 4 taş (2 üst, 2 alt). Üst katmandaki 16 açık taş 8 çift
-    // oluşturur; hepsi eşleştirilince alttakiler açılır -> her zaman çözülebilir.
+    // Seviyenin dizimindeki her hücre 2 katman taş alır (alt + üst).
+    // Üst katmandaki tüm taşlar açıktır ve çiftler halinde eşleştirilebilir;
+    // kalkınca alttakiler açılır -> her seviye her zaman çözülebilir.
+    const def = this.level();
+    const cells = def.cells;
+    const runes = cells.length / 2;
+
     const symbols: number[] = [];
-    for (let s = 0; s < RUNES.length; s++) {
+    for (let s = 0; s < runes; s++) {
       for (let k = 0; k < 4; k++) symbols.push(s);
     }
     for (let i = symbols.length - 1; i > 0; i--) {
@@ -110,29 +149,40 @@ export class Game {
       [symbols[i], symbols[j]] = [symbols[j], symbols[i]];
     }
 
+    // Dizimin boyutundan merkezleme.
+    let cols = 0;
+    let rows = 0;
+    for (const [c, r] of cells) {
+      if (c > cols) cols = c;
+      if (r > rows) rows = r;
+    }
+    this.layoutCols = cols + 1;
+    this.layoutRows = rows + 1;
+
     let idx = 0;
-    for (let col = 0; col < 4; col++) {
-      for (let row = 0; row < 4; row++) {
-        // Katman 0 (alt), Katman 1 (üst).
-        const s0 = symbols[idx++];
-        const s1 = symbols[idx++];
-        this.tiles.push(this.makeTile(s0, col, row, 0));
-        this.tiles.push(this.makeTile(s1, col, row, 1));
-      }
+    for (const [col, row] of cells) {
+      const s0 = symbols[idx++];
+      const s1 = symbols[idx++];
+      this.tiles.push(this.makeTile(s0, col, row, 0));
+      this.tiles.push(this.makeTile(s1, col, row, 1));
     }
   }
+
+  private layoutCols = 4;
+  private layoutRows = 4;
 
   private makeTile(symbol: number, col: number, row: number, layer: number): Tile {
     // Üst katman aynı hücrenin üzerine hafifçe kayarak biner (mahjong hissi).
     const ox = layer * 12;
     const oy = layer * -14;
-    const cols = 4;
-    const boardW = cols * (TILE_W + GAP);
+    const boardW = this.layoutCols * (TILE_W + GAP);
+    const boardH = this.layoutRows * (TILE_H + GAP);
     const sx0 = (CANVAS_W - boardW) / 2;
+    const sy0 = (CANVAS_H - boardH) / 2 + 30;
     const sx = sx0 + col * (TILE_W + GAP) + ox;
-    const sy = 120 + row * (TILE_H + GAP) + oy;
+    const sy = sy0 + row * (TILE_H + GAP) + oy;
     return {
-      id: col * 100 + row * 10 + layer,
+      id: col * 1000 + row * 10 + layer,
       symbol,
       x: col,
       y: row,
@@ -152,6 +202,21 @@ export class Game {
     this.history = [];
     this.buildLayout();
     this.emitHud();
+  }
+
+  /** Bir sonraki seviyeye geçer; son seviyeden sonra başa döner. */
+  nextLevel(): void {
+    this.levelIndex = (this.levelIndex + 1) % LEVELS.length;
+    this.newGame();
+  }
+
+  goToLevel(i: number): void {
+    this.levelIndex = ((i % LEVELS.length) + LEVELS.length) % LEVELS.length;
+    this.newGame();
+  }
+
+  getLevelIndex(): number {
+    return this.levelIndex;
   }
 
   undo(): void {
@@ -271,29 +336,39 @@ export class Game {
       selected: this.selectedId === null ? -1 : this.selectedId,
       won: this.won,
       stuck,
+      level: this.levelIndex % LEVELS.length,
+      levelName: this.level().name,
     });
   }
 
   // ---- Render ----
   private render(): void {
     const c = this.ctx;
-    // Arka plan: buz + Göktürk tonu.
-    const g = c.createLinearGradient(0, 0, 0, 720);
-    g.addColorStop(0, "#0e2433");
-    g.addColorStop(1, "#16384a");
+    const def = this.level();
+    // Arka plan: seviyeye göre buz + Göktürk tonu.
+    const g = c.createLinearGradient(0, 0, 0, CANVAS_H);
+    g.addColorStop(0, def.bg[0]);
+    g.addColorStop(1, def.bg[1]);
     c.fillStyle = g;
-    c.fillRect(0, 0, 1280, 720);
+    c.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // Başlık.
+    // Başlık + seviye.
     c.fillStyle = "#d4e8f2";
-    c.textAlign = "center";
-    c.font = "bold 40px Georgia";
-    c.fillText("Göktürk Mahjong", 400, 60);
+    c.textAlign = "left";
+    c.font = "bold 36px Georgia";
+    c.fillText("Göktürk Mahjong", 90, 52);
+    c.font = "bold 22px Georgia";
+    c.fillStyle = "#9fd0e0";
+    c.fillText(`Seviye ${this.levelIndex % LEVELS.length + 1} · ${def.name}`, 90, 84);
 
-    // Yerleşimin çerçevesi.
+    // Yerleşimin çerçevesi (taş alanına göre).
+    const boxW = this.layoutCols * (TILE_W + GAP) + GAP;
+    const boxH = this.layoutRows * (TILE_H + GAP) + GAP;
+    const bx = (CANVAS_W - boxW) / 2;
+    const by = (CANVAS_H - boxH) / 2 + 30;
     c.strokeStyle = "rgba(255,255,255,0.08)";
     c.lineWidth = 2;
-    c.strokeRect(90, 80, 700, 560);
+    c.strokeRect(bx - 12, by - 12, boxW + 24, boxH + 24);
 
     // Taşları çiz (en üst katman önce değil, alt→üst sıralama render etkisi).
     const sorted = [...this.tiles].sort((a, b) => a.layer - b.layer);
@@ -306,10 +381,11 @@ export class Game {
 
     // Kenar paneli (sağda): istatistik.
     const remaining = this.tiles.filter((t) => !t.removed).length;
+    const total = this.tiles.length;
     c.fillStyle = "#d4e8f2";
     c.font = "18px Georgia";
     c.textAlign = "left";
-    c.fillText(`Kalan: ${remaining}`, 900, 180);
+    c.fillText(`Kalan: ${remaining} / ${total}`, 900, 180);
     c.fillText(`Hamle: ${this.moves}`, 900, 215);
     c.fillText(`Süre: ${Math.floor(this.seconds)} sn`, 900, 250);
 
@@ -321,6 +397,7 @@ export class Game {
     c.fillText("taşlar seçilebilir.", 900, 376);
     c.fillText("[Yeni Oyun] Klavye: N", 900, 420);
     c.fillText("[Geri Al] Klavye: U", 900, 444);
+    c.fillText("[Sonraki] Klavye: L", 900, 468);
   }
 
   private drawTile(

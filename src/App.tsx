@@ -19,6 +19,8 @@ export default function App() {
         game.newGame();
       } else if (e.key === "u" || e.key === "U") {
         game.undo();
+      } else if (e.key === "l" || e.key === "L") {
+        game.nextLevel();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -40,23 +42,40 @@ export default function App() {
           <div className="win-banner">
             <div className="win-title">Başardın!</div>
             <div className="win-sub">
-              {hud?.moves} hamlede, {hud?.seconds} saniyede tüm rünleri eşleştirdin.
+              Seviye {hud?.levelName}: {hud?.moves} hamlede, {hud?.seconds}{" "}
+              saniyede tüm rünleri eşleştirdin.
             </div>
-            <button
-              className="btn"
-              onClick={() => gameRef.current?.newGame()}
-            >
-              Yeni Oyun
-            </button>
+            <div className="win-actions">
+              <button className="btn" onClick={() => gameRef.current?.nextLevel()}>
+                Sonraki Seviye
+              </button>
+              <button className="btn ghost" onClick={() => gameRef.current?.newGame()}>
+                Tekrar Oyna
+              </button>
+            </div>
           </div>
         )}
       </div>
       <div className="toolbar">
+        <div className="level-picker">
+          {["1", "2", "3", "4", "5"].map((label, i) => (
+            <button
+              key={i}
+              className={`btn tbtn lvl ${hud?.level === i ? "active" : ""}`}
+              onClick={() => gameRef.current?.goToLevel(i)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <button className="btn tbtn" onClick={() => gameRef.current?.newGame()}>
           Yeni Oyun (N)
         </button>
         <button className="btn tbtn" onClick={() => gameRef.current?.undo()}>
           Geri Al (U)
+        </button>
+        <button className="btn tbtn" onClick={() => gameRef.current?.nextLevel()}>
+          Sonraki (L)
         </button>
       </div>
     </div>

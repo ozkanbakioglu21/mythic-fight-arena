@@ -70,6 +70,34 @@ body,
 .toolbar {
   display: flex;
   gap: 12px;
+  align-items: center;
+}
+
+.level-picker {
+  display: flex;
+  gap: 6px;
+}
+
+.lvl {
+  min-width: 38px;
+  padding: 10px 0;
+  text-align: center;
+}
+
+.lvl.active {
+  background: #d4af37;
+  color: #1a1200;
+}
+
+.win-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn.ghost {
+  background: transparent;
+  border: 2px solid #d4af37;
+  color: #d4af37;
 }
 
 .btn {
