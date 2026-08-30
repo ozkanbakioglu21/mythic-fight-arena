@@ -1,4 +1,4 @@
-// Göktürk Mahjong Solitaire
+// Ötüken Mahjong Solitaire
 // Kurallar: aynı Göktürk rününe sahip iki AÇIK taşı seçip eşleştir, kaldır.
 // Tüm taşlar kalkınca oyunu kazanırsın.
 
@@ -552,7 +552,7 @@ export class Game {
     c.fillStyle = "#d4e8f2";
     c.textAlign = "left";
     c.font = "bold 36px Georgia";
-    c.fillText("Göktürk Mahjong", 90, 52);
+    c.fillText("Ötüken Mahjong", 90, 52);
     c.font = "bold 22px Georgia";
     c.fillStyle = "#9fd0e0";
     c.fillText(`Seviye ${this.levelIndex + 1} · ${def.name}`, 90, 84);
