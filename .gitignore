@@ -1,5 +1,6 @@
 node_modules
 dist
-.DS_Store
+dist-ssr
 *.local
-.vercel
+*.map
+.DS_Store

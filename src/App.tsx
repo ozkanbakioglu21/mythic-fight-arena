@@ -13,28 +13,51 @@ export default function App() {
     gameRef.current = game;
     game.onHud = setHud;
     game.start();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "n" || e.key === "N") {
+        game.newGame();
+      } else if (e.key === "u" || e.key === "U") {
+        game.undo();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+
     return () => {
       game.stop();
       gameRef.current = null;
+      window.removeEventListener("keydown", onKey);
     };
   }, []);
+
+  const won = hud?.won;
 
   return (
     <div className="game-shell">
       <div className="arena">
         <canvas ref={canvasRef} className="arena-canvas" />
-        {hud && hud.scene === "room" && (
-          <div className="hud">
-            <div className="hud-room">{hud.roomName}</div>
-            <div className="hud-progress">
-              Oda {hud.roomIndex + 1} / {hud.roomTotal}
+        {won && (
+          <div className="win-banner">
+            <div className="win-title">Başardın!</div>
+            <div className="win-sub">
+              {hud?.moves} hamlede, {hud?.seconds} saniyede tüm rünleri eşleştirdin.
             </div>
-            <div className="hud-hint">{hud.roomHint}</div>
+            <button
+              className="btn"
+              onClick={() => gameRef.current?.newGame()}
+            >
+              Yeni Oyun
+            </button>
           </div>
         )}
       </div>
-      <div className="footnote">
-        Fare ile oyna · Plakalara bas, sembolleri takip et, bilmeceleri çöz
+      <div className="toolbar">
+        <button className="btn tbtn" onClick={() => gameRef.current?.newGame()}>
+          Yeni Oyun (N)
+        </button>
+        <button className="btn tbtn" onClick={() => gameRef.current?.undo()}>
+          Geri Al (U)
+        </button>
       </div>
     </div>
   );
