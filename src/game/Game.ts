@@ -202,7 +202,7 @@ export class Game {
   private won = false;
   private history: Array<{ a: number; b: number }> = [];
   private levelIndex = 0;
-  private tray: number[] = []; // hazneye düşen eşlenen rünler (max 4)
+  private tray: Array<{ id: number; symbol: number }> = []; // hazneye düşen eşlenen rünler (max 4)
   private shards: Array<{
     x: number;
     y: number;
@@ -417,39 +417,33 @@ export class Game {
     }
     if (!target) return;
 
-    if (this.selectedId === null) {
-      this.selectedId = target.id;
-      this.emitHud();
-      return;
-    }
-    const selected = this.tiles.find((t) => t.id === this.selectedId)!;
-    if (selected.id === target.id) {
-      this.selectedId = null;
-      this.emitHud();
-      return;
-    }
-    if (selected.symbol === target.symbol) {
-      // Eşleşti -> kaldır, hazneye düşür.
-      selected.removed = true;
-      target.removed = true;
-      this.history.push({ a: selected.id, b: target.id });
-      this.tray.push(selected.symbol, target.symbol);
-      this.moves++;
-      this.selectedId = null;
-      // Hazne tamamen doldu (4 taş = 2 eşleşme) -> kır.
-      if (this.tray.length >= 4) {
-        this.breakTray();
+    // Taşı tahtadan alıp hazneye tek tek ekle.
+    target.removed = true;
+    this.tray.push({ id: target.id, symbol: target.symbol });
+
+    // Haznede aynı ründen 2 varsa -> kır (eşleşme).
+    const lastIdx = this.tray.length - 1;
+    let pairIdx = -1;
+    for (let i = 0; i < lastIdx; i++) {
+      if (this.tray[i].symbol === target.symbol) {
+        pairIdx = i;
+        break;
       }
-      // Kazanma.
-      if (this.tiles.every((t) => t.removed)) {
-        this.won = true;
-      }
-      this.emitHud();
-    } else {
-      // Eşleşmedi -> yeni seçim.
-      this.selectedId = target.id;
-      this.emitHud();
     }
+    if (pairIdx !== -1) {
+      this.breakPair(pairIdx, lastIdx);
+    } else if (this.tray.length > 4) {
+      // Taşma: en eski taş yerine döner (çözülebilirlik korunur).
+      const oldest = this.tray.shift()!;
+      const tile = this.tiles.find((t) => t.id === oldest.id);
+      if (tile) tile.removed = false;
+    }
+
+    // Kazanma.
+    if (this.tiles.every((t) => t.removed)) {
+      this.won = true;
+    }
+    this.emitHud();
   }
 
   private loop = (now: number): void => {
@@ -479,11 +473,18 @@ export class Game {
   }
 
   /** Haznedeki 4 taşı parçalara ayırıp patlatır ve hazneyi boşaltır. */
-  private breakTray(): void {
+    /** Haznedeki pairIdx ve lastIdx slotlarindaki iki tasi kirar. */
+  private breakPair(a: number, b: number): void {
     const color = RUNE_COLORS;
-    for (let i = 0; i < this.tray.length; i++) {
-      const bx = CANVAS_W / 2 + (i - 1.5) * 40;
-      const sym = this.tray[i];
+    if (a > b) {
+      const t = a;
+      a = b;
+      b = t;
+    }
+    const eA = this.tray[a];
+    const eB = this.tray[b];
+    const shard = (slot: number, sym: number) => {
+      const bx = CANVAS_W / 2 + (slot - 1.5) * 40;
       for (let k = 0; k < 6; k++) {
         const ang = Math.random() * Math.PI * 2;
         const spd = 60 + Math.random() * 180;
@@ -498,8 +499,13 @@ export class Game {
           r: 3 + Math.random() * 5,
         });
       }
-    }
-    this.tray = [];
+    };
+    shard(a, eA.symbol);
+    shard(b, eB.symbol);
+    this.history.push({ a: eA.id, b: eB.id });
+    this.moves++;
+    this.tray.splice(b, 1);
+    this.tray.splice(a, 1);
   }
 
   private emitHud(): void {
@@ -610,10 +616,10 @@ export class Game {
       c.lineWidth = 1;
       c.stroke();
       if (i < this.tray.length) {
-        c.fillStyle = RUNE_COLORS[this.tray[i]];
+        c.fillStyle = RUNE_COLORS[this.tray[i].symbol];
         c.font = "bold 30px 'Segoe UI Historic','Noto Sans Old Turkic',serif";
         c.textBaseline = "alphabetic";
-        c.fillText(RUNES[this.tray[i]], sx + slotW / 2, trayY + 8);
+        c.fillText(RUNES[this.tray[i].symbol], sx + slotW / 2, trayY + 8);
       }
     }
     c.textBaseline = "alphabetic";
@@ -631,10 +637,10 @@ export class Game {
 
     c.fillStyle = "#7f96b8";
     c.font = "15px Georgia";
-    c.fillText("İpucu: Aynı ründe", 900, 310);
-    c.fillText("iki AÇIK taş seç,", 900, 332);
-    c.fillText("kaldır. Üstü açık", 900, 354);
-    c.fillText("taşlar seçilebilir.", 900, 376);
+    c.fillText("Açık taşa tıkla,", 900, 310);
+    c.fillText("hazneye düşer. Aynı", 900, 332);
+    c.fillText("rün ikili olunca", 900, 354);
+    c.fillText("kırılır.", 900, 376);
     c.fillText("[Yeni Oyun] Klavye: N", 900, 420);
     c.fillText("[Geri Al] Klavye: U", 900, 444);
     c.fillText("[Sonraki] Klavye: L", 900, 468);
