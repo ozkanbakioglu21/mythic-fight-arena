@@ -541,89 +541,156 @@ export class Game {
     selected: boolean,
   ): void {
     const w = TILE_W;
-    const depth = 16; // taş kalınlığı (3B derinlik)
+    const h = TILE_H - 3; // üst yüzey yüksekliği
+    const depth = 14; // kalınlık (3B derinlik)
     const x = t.sx - w / 2;
     const yTop = t.sy - TILE_H / 2; // üst yüzey üst kenarı
+    const cx = t.sx;
 
-    // Yerdeki gölge.
-    c.fillStyle = open ? "rgba(0,0,0,0.45)" : "rgba(0,0,0,0.3)";
+    // ---- Yumuşak zemin gölgesi (katmanlı) ----
     c.beginPath();
-    c.ellipse(t.sx + 3, yTop + TILE_H - 6 + depth, w / 2 + 6, 14, 0, 0, Math.PI * 2);
+    c.ellipse(cx + 2, yTop + h + depth * 0.7 + 4, w / 2 + 5, 12, 0, 0, Math.PI * 2);
+    c.fillStyle = "rgba(0,0,0,0.4)";
+    c.fill();
+    c.beginPath();
+    c.ellipse(cx + 2, yTop + h + depth * 0.7 + 6, w / 2 + 9, 19, 0, 0, Math.PI * 2);
+    c.fillStyle = "rgba(0,0,0,0.22)";
     c.fill();
 
-    // Renk temel tonları (açık -> kapalı ayırır).
-    const top = open ? "#f4fbff" : "#a7c4d6";
-    const topShade = open ? "#d6eaf5" : "#89abbf";
-    const front = open ? "#8fb0c4" : "#5f7f96";
-    const right = open ? "#6f92a8" : "#4c6b82";
-    const rim = selected ? "#ffd24a" : open ? "#5c8ca8" : "#48677a";
+    // ---- Palet: açık (fildişi/turkuaz) vs kapalı (jade) ----
+    const pal = open
+      ? {
+          top1: "#fffdf7",
+          top2: "#e6dcc2",
+          speck: "#d8c9a8",
+          sideL: "#ccbf9d",
+          sideD: "#a4916b",
+          rim: "#8d7a52",
+          sel: "#ffb020",
+        }
+      : {
+          top1: "#d5ecd9",
+          top2: "#8fc3a0",
+          speck: "#79b18b",
+          sideL: "#77ad8d",
+          sideD: "#4f8766",
+          rim: "#3a6b50",
+          sel: "#ffb020",
+        };
 
-    // Sağ yan yüzey (derinlik).
-    c.fillStyle = right;
+    // ---- Yan yüzeyler (ışık soldan gelir: sağ yan koyu, ön yan orta) ----
+    // Sağ yan.
+    c.fillStyle = pal.sideD;
     c.beginPath();
-    c.moveTo(x + w, yTop + 4);
-    c.lineTo(x + w + depth, yTop + 4 + depth * 0.7);
-    c.lineTo(x + w + depth, yTop + TILE_H - 4 + depth * 0.7);
-    c.lineTo(x + w, yTop + TILE_H - 4);
+    c.moveTo(x + w, yTop + 3);
+    c.lineTo(x + w + depth, yTop + 3 + depth * 0.7);
+    c.lineTo(x + w + depth, yTop + h + depth * 0.7);
+    c.lineTo(x + w, yTop + h);
+    c.closePath();
+    c.fill();
+    // Sağ yanın ışıklı üst kenarı.
+    c.fillStyle = pal.sideL;
+    c.beginPath();
+    c.moveTo(x + w, yTop + 3);
+    c.lineTo(x + w + depth, yTop + 3 + depth * 0.7);
+    c.lineTo(x + w + depth, yTop + 3 + depth * 0.7 + 9);
+    c.lineTo(x + w, yTop + 3 + 9);
+    c.closePath();
+    c.fill();
+    // Ön yan.
+    const fg = c.createLinearGradient(0, yTop + 3, 0, yTop + h);
+    fg.addColorStop(0, pal.sideL);
+    fg.addColorStop(1, pal.sideD);
+    c.fillStyle = fg;
+    c.beginPath();
+    c.moveTo(x + 3, yTop + h);
+    c.lineTo(x + 3 + depth, yTop + h + depth * 0.7);
+    c.lineTo(x + w - 3 + depth, yTop + h + depth * 0.7);
+    c.lineTo(x + w - 3, yTop + h);
     c.closePath();
     c.fill();
 
-    // Ön yan yüzey (derinlik).
-    c.fillStyle = front;
+    // ---- Üst yüzey: radyal ışık (hafif bombeli) ----
+    const rg = c.createRadialGradient(
+      cx, yTop + h * 0.25, h * 0.25,
+      cx, yTop + h * 0.6, w * 0.75,
+    );
+    rg.addColorStop(0, pal.top1);
+    rg.addColorStop(1, pal.top2);
+    c.fillStyle = rg;
+    c.strokeStyle = "rgba(0,0,0,0.28)";
+    c.lineWidth = 2;
     c.beginPath();
-    c.moveTo(x + 4, yTop + TILE_H - 4);
-    c.lineTo(x + 4 + depth, yTop + TILE_H - 4 + depth * 0.7);
-    c.lineTo(x + w - 4 + depth, yTop + TILE_H - 4 + depth * 0.7);
-    c.lineTo(x + w - 4, yTop + TILE_H - 4);
-    c.closePath();
+    c.roundRect(x, yTop, w, h, 7);
     c.fill();
-
-    // Üst yüzey (gradyan: üstten ışık).
-    const g = c.createLinearGradient(x, yTop, x, yTop + TILE_H);
-    g.addColorStop(0, top);
-    g.addColorStop(1, topShade);
-    c.fillStyle = g;
-    c.beginPath();
-    c.roundRect(x, yTop, w, TILE_H - 4, 8);
-    c.fill();
-    // Üst yüzey ince ışık çizgisi.
-    c.fillStyle = "rgba(255,255,255,0.55)";
-    c.beginPath();
-    c.roundRect(x + 4, yTop + 3, w - 8, 4, 3);
-    c.fill();
-
-    // Kenar çizgisi.
-    c.strokeStyle = rim;
-    c.lineWidth = selected ? 4 : 2;
-    c.beginPath();
-    c.roundRect(x, yTop, w, TILE_H - 4, 8);
     c.stroke();
 
-    // Rün (üst yüzeyde, oyma hissi için önce hafif gölge sonra net rün).
-    if (open) {
-      c.font = "bold 30px 'Segoe UI Historic','Noto Sans Old Turkic',serif";
-      c.textAlign = "center";
-      c.textBaseline = "middle";
-      c.fillStyle = "rgba(0,0,0,0.18)";
-      c.fillText(RUNES[t.symbol], t.sx, t.sy);
-      c.fillStyle = RUNE_COLORS[t.symbol];
-      c.fillText(RUNES[t.symbol], t.sx, t.sy - 1);
-      c.textBaseline = "alphabetic";
-    } else {
-      c.fillStyle = "rgba(14,36,52,0.55)";
-      c.font = "bold 26px serif";
-      c.textAlign = "center";
-      c.textBaseline = "middle";
-      c.fillText(RUNES[t.symbol], t.sx, t.sy - 1);
-      c.textBaseline = "alphabetic";
+    // ---- Mermer doku (taş başına sabit damarlar) ----
+    const d1 = (t.id * 37) % 11;
+    c.strokeStyle = open ? "rgba(140,120,80,0.16)" : "rgba(40,90,60,0.16)";
+    c.lineWidth = 1.5;
+    c.lineCap = "round";
+    for (let i = 0; i < 3; i++) {
+      const yy = yTop + 8 + ((t.id * 13 + i * 29) % (h - 16));
+      const x0 = x + 4 + ((d1 + i * 7) % (w - 12));
+      c.beginPath();
+      c.moveTo(x0, yy);
+      c.quadraticCurveTo(
+        x0 + 8, yy + ((i % 2 === 0 ? 1 : -1) * 5),
+        x0 + 16, yy,
+      );
+      c.stroke();
     }
 
-    // Açık ve seçili değilse üstte parlak parlama.
-    if (open && !selected) {
-      c.strokeStyle = "rgba(255,255,255,0.45)";
+    // Üst yüzey parlak vurgu (cam parlaması).
+    c.strokeStyle = "rgba(255,255,255,0.6)";
+    c.lineWidth = 1;
+    c.beginPath();
+    c.roundRect(x + 5, yTop + 4, w - 10, 3.5, 2);
+    c.stroke();
+
+    // ---- Kenar çizgisi ----
+    c.strokeStyle = selected ? pal.sel : pal.rim;
+    c.lineWidth = selected ? 4 : 2;
+    c.beginPath();
+    c.roundRect(x, yTop, w, h, 7);
+    c.stroke();
+
+    // ---- Oyma rün ----
+    if (open) {
+      const col = RUNE_COLORS[t.symbol];
+      c.font = "bold 32px 'Segoe UI Historic','Noto Sans Old Turkic',serif";
+      c.textAlign = "center";
+      c.textBaseline = "alphabetic";
+      // gölge (oyuk içi) — aşağı-sağa
+      c.fillStyle = "rgba(255,255,255,0.7)";
+      c.fillText(RUNES[t.symbol], t.sx - 1.5, t.sy + 1.5);
+      // koyu oyuk kenar
+      c.fillStyle = "rgba(60,40,20,0.5)";
+      c.fillText(RUNES[t.symbol], t.sx + 1.5, t.sy + 2.5);
+      // ana rün
+      c.fillStyle = col;
+      c.fillText(RUNES[t.symbol], t.sx, t.sy);
+    } else {
+      c.font = "bold 26px serif";
+      c.textAlign = "center";
+      c.textBaseline = "alphabetic";
+      c.fillStyle = "rgba(8,30,20,0.55)";
+      c.fillText(RUNES[t.symbol], t.sx, t.sy);
+    }
+
+    // ---- Seçili vurgusu / açık parlama ----
+    if (selected) {
+      c.strokeStyle = "rgba(255,176,32,0.5)";
+      c.lineWidth = 2;
+      c.beginPath();
+      c.roundRect(x - 5, yTop - 5, w + 10, h + 10, 11);
+      c.stroke();
+    } else if (open) {
+      c.strokeStyle = "rgba(255,255,255,0.3)";
       c.lineWidth = 1;
       c.beginPath();
-      c.roundRect(x - 4, yTop - 4, w + 8, TILE_H - 4 + 8, 12);
+      c.roundRect(x - 4, yTop - 4, w + 8, h + 8, 11);
       c.stroke();
     }
   }
