@@ -539,6 +539,7 @@ export class Game {
   }
 
   /** Göktürk motifleri: arka plan rünleri, altın tonlu bantlar (bir kez çizilip önbelleğe alınır). */
+  /** Göktürk obası sahnesi + motifler (bir kez çizilip önbelleğe alınır). */
   private drawMotifs(c: CanvasRenderingContext2D): void {
     if (!this.motifsCache) {
       const off = document.createElement("canvas");
@@ -547,7 +548,109 @@ export class Game {
       const m = off.getContext("2d")!;
       m.textAlign = "center";
 
-      // Zayıf arka plan rünleri (Orhun alfabesi su izi).
+      // ---- Uzak dağ tepeleri (silüet) ----
+      const ridge = (baseY: number, amp: number, seed: number) => {
+        m.beginPath();
+        m.moveTo(0, baseY + 40);
+        for (let x = 0; x <= CANVAS_W; x += 30) {
+          const y = baseY - Math.abs(Math.sin((x + seed) * 0.006) * amp) - amp * 0.4;
+          m.lineTo(x, y);
+        }
+        m.lineTo(CANVAS_W, CANVAS_H);
+        m.lineTo(0, CANVAS_H);
+        m.closePath();
+        m.fill();
+      };
+      m.save();
+      m.globalAlpha = 0.5;
+      m.fillStyle = "rgba(140,165,190,0.14)";
+      ridge(420, 60, 40);
+      m.fillStyle = "rgba(120,150,175,0.18)";
+      ridge(505, 45, 130);
+      m.fillStyle = "rgba(100,130,155,0.22)";
+      ridge(590, 38, 210);
+      m.restore();
+
+      // ---- Gök bayrağı / tuğ (solda) ----
+      const tugh = (fx: number, fy: number) => {
+        m.strokeStyle = "rgba(90,110,120,0.35)";
+        m.lineWidth = 3;
+        m.beginPath();
+        m.moveTo(fx, fy);
+        m.lineTo(fx, fy + 90);
+        m.stroke();
+        m.strokeStyle = "rgba(180,200,215,0.30)";
+        m.lineWidth = 2;
+        for (let k = 0; k < 4; k++) {
+          m.beginPath();
+          m.moveTo(fx, fy);
+          m.quadraticCurveTo(fx - 26, fy + 10 + k * 5, fx - 10, fy + 34 + k * 5);
+          m.stroke();
+        }
+      };
+      m.save();
+      m.globalAlpha = 0.6;
+      tugh(140, 150);
+      tugh(148, 148);
+      m.restore();
+
+      // ---- Yurtlar (konik çadırlar) ----
+      const yurt = (cx: number, baseY: number, w: number, h: number) => {
+        m.fillStyle = "rgba(150,150,130,0.28)";
+        m.beginPath();
+        m.moveTo(cx - w / 2, baseY);
+        m.lineTo(cx, baseY - h);
+        m.lineTo(cx + w / 2, baseY);
+        m.closePath();
+        m.fill();
+        m.strokeStyle = "rgba(255,255,255,0.10)";
+        m.lineWidth = 1.5;
+        m.stroke();
+        m.fillStyle = "rgba(80,70,50,0.35)";
+        m.beginPath();
+        m.moveTo(cx - 8, baseY);
+        m.lineTo(cx - 8, baseY - 16);
+        m.lineTo(cx + 8, baseY - 16);
+        m.lineTo(cx + 8, baseY);
+        m.closePath();
+        m.fill();
+        m.strokeStyle = "rgba(200,150,80,0.25)";
+        m.lineWidth = 2;
+        m.beginPath();
+        m.moveTo(cx - w / 2 + 4, baseY - h * 0.15);
+        m.lineTo(cx + w / 2 - 4, baseY - h * 0.15);
+        m.stroke();
+      };
+      m.save();
+      m.globalAlpha = 0.7;
+      yurt(360, 648, 150, 108);
+      yurt(560, 660, 175, 124);
+      yurt(820, 648, 140, 100);
+      yurt(1050, 665, 180, 130);
+      m.restore();
+
+      // ---- Ateş / ocak (solda, yurt önünde) ----
+      m.save();
+      m.globalAlpha = 0.5;
+      const fireX = 470;
+      const fireY = 668;
+      m.fillStyle = "rgba(230,150,60,0.35)";
+      m.beginPath();
+      m.moveTo(fireX - 14, fireY);
+      m.quadraticCurveTo(fireX - 4, fireY - 34, fireX, fireY - 46);
+      m.quadraticCurveTo(fireX + 6, fireY - 30, fireX + 16, fireY);
+      m.closePath();
+      m.fill();
+      m.fillStyle = "rgba(250,210,120,0.35)";
+      m.beginPath();
+      m.moveTo(fireX - 8, fireY);
+      m.quadraticCurveTo(fireX - 2, fireY - 20, fireX, fireY - 28);
+      m.quadraticCurveTo(fireX + 4, fireY - 18, fireX + 10, fireY);
+      m.closePath();
+      m.fill();
+      m.restore();
+
+      // ---- Zayıf arka plan rünleri (su izi) ----
       m.save();
       m.globalAlpha = 0.06;
       m.fillStyle = "#ffffff";
@@ -565,8 +668,8 @@ export class Game {
       }
       m.restore();
 
-      // Altın tonlu şerit bantları: basamak (merdiven) + baklava motifi.
-      const gold = (a: number) => `rgba(212,175,55,${a})`;
+      // ---- Altın tonlu şerit bantları: basamak + baklava motifi ----
+      const gold = (a: number) => "rgba(212,175,55," + a + ")";
       const band = (yBase: number, dir: 1 | -1) => {
         m.strokeStyle = gold(0.14);
         m.lineWidth = 2;
@@ -574,7 +677,6 @@ export class Game {
         m.moveTo(44, yBase);
         m.lineTo(CANVAS_W - 44, yBase);
         m.stroke();
-        // Baklava (elmas) noktaları.
         m.fillStyle = gold(0.2);
         for (let x = 44; x <= CANVAS_W - 44; x += 20) {
           m.beginPath();
@@ -585,7 +687,6 @@ export class Game {
           m.closePath();
           m.fill();
         }
-        // Basamak (merdiven) motifi.
         m.fillStyle = gold(0.1);
         const sy = yBase + 8 * dir;
         for (let x = 40; x <= CANVAS_W - 44; x += 40) {
