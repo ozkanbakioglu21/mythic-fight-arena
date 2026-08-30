@@ -848,87 +848,128 @@ export class Game {
     const h = TILE_H;
     const x = t.sx - w / 2;
     const yTop = t.sy - h / 2;
+    const R = 9;
 
-    // ---- Renkler: 2D tek renk taş (açık = fildişi, kapalı = koyu) ----
-    const face = open ? "#f3ead6" : "#3d434b";
-    const faceTop = open ? shade(face, 9) : shade(face, 9);
-    const faceBot = open ? shade(face, -9) : shade(face, -5);
-    const inner = open ? shade(face, -17) : shade(face, 16);
-    const rim = open ? shade(face, -27) : shade(face, -22);
+    // ---- Renk paleti (acik = fildisi, kapali = koyu duman) ----
+    const face = open ? "#f6efdf" : "#3d434b";
+    const faceTop = open ? "#fffdf5" : shade(face, 13);
+    const faceBot = open ? "#e5d8bb" : shade(face, -7);
+    const innerTop = open ? "#fcf5e5" : shade(face, 5);
+    const innerBot = open ? "#e0d2b0" : shade(face, -12);
+    const rim = open ? "#c9bda6" : "#50575f";
 
-    // ---- 2D gölge (sağ-alt offset) ----
-    c.fillStyle = "rgba(0,0,0,0.25)";
+    // ---- Dis golge (sag-alt) ----
+    c.fillStyle = "rgba(10,15,20,0.30)";
     c.beginPath();
-    c.roundRect(x + 4, yTop + 5, w, h, 9);
+    c.roundRect(x + 3, yTop + 5, w, h, R + 1);
     c.fill();
 
-    // ---- Gövde (hafif dikey ışık) ----
+    // ---- Govde: dikey degrade + bevel ----
     const bg = c.createLinearGradient(0, yTop, 0, yTop + h);
     bg.addColorStop(0, faceTop);
     bg.addColorStop(1, faceBot);
     c.fillStyle = bg;
     c.beginPath();
-    c.roundRect(x, yTop, w, h, 9);
+    c.roundRect(x, yTop, w, h, R);
     c.fill();
 
-    // ---- Kapalı taş: dokuma desen; Açık taş: iç madalyon ----
+    // ---- Ic madalyon (acik) / dokuma yuzey (kapali) ----
     if (open) {
-      c.fillStyle = inner;
+      const ig = c.createLinearGradient(0, yTop + 9, 0, yTop + h - 9);
+      ig.addColorStop(0, innerTop);
+      ig.addColorStop(1, innerBot);
+      c.fillStyle = ig;
       c.beginPath();
-      c.roundRect(x + 7, yTop + 9, w - 14, h - 18, 9);
+      c.roundRect(x + 7, yTop + 9, w - 14, h - 18, R - 2);
       c.fill();
-      c.strokeStyle = shade(face, -37);
-      c.lineWidth = 1.3;
+      // Ic gogei (ustte hafif kucuk)
+      const sh = c.createLinearGradient(0, yTop + 9, 0, yTop + 34);
+      sh.addColorStop(0, "rgba(0,0,0,0.06)");
+      sh.addColorStop(1, "rgba(0,0,0,0)");
+      c.fillStyle = sh;
       c.beginPath();
-      c.roundRect(x + 7, yTop + 9, w - 14, h - 18, 9);
+      c.roundRect(x + 7, yTop + 9, w - 14, 25, R - 2);
+      c.fill();
+      // Ust kenar parlaklik cizgisi (madalyon)
+      c.strokeStyle = "rgba(255,255,255,0.55)";
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(x + 10, yTop + 11);
+      c.lineTo(x + w - 10, yTop + 11);
       c.stroke();
     } else {
       c.save();
-      c.globalAlpha = 0.18;
+      c.globalAlpha = 0.16;
       c.strokeStyle = "#ffffff";
-      c.lineWidth = 1;
+      c.lineWidth = 1.2;
       for (let i = -1; i < 5; i++) {
         const off = x + i * 12;
         c.beginPath();
         c.moveTo(off, yTop);
-        c.lineTo(off + 10, yTop + h);
+        c.lineTo(off + 11, yTop + h);
         c.stroke();
       }
       c.restore();
     }
 
-    // ---- Kenar çizgisi ----
-    c.strokeStyle = selected ? "#ffb020" : rim;
-    c.lineWidth = selected ? 3.5 : 1.8;
+    // ---- Sag-alt bevel cizgisi (derinlik) ----
+    c.strokeStyle = "rgba(0,0,0,0.22)";
+    c.lineWidth = 1;
     c.beginPath();
-    c.roundRect(x, yTop, w, h, 9);
+    c.moveTo(x + R, yTop + h - 1);
+    c.lineTo(x + w - 3, yTop + h - 1);
+    c.lineTo(x + w - 1, yTop + R);
+    c.stroke();
+    // Sol-ust parlak cizgi
+    c.strokeStyle = "rgba(255,255,255,0.30)";
+    c.beginPath();
+    c.moveTo(x + R, yTop + 1);
+    c.lineTo(x + w - 3, yTop + 1);
+    c.lineTo(x + w - 1, yTop + R);
     c.stroke();
 
-    // ---- Renkli rün ----
+    // ---- Dis cerceve ----
+    c.strokeStyle = selected ? "#ffb020" : rim;
+    c.lineWidth = selected ? 3.5 : 2;
+    c.beginPath();
+    c.roundRect(x, yTop, w, h, R);
+    c.stroke();
+
+    // ---- Run (renkli, golgeli + hafif parlama) ----
     c.font =
       (open ? "bold 36px " : "bold 26px ") +
       "'Segoe UI Historic','Noto Sans Old Turkic',serif";
     c.textAlign = "center";
     c.textBaseline = "alphabetic";
     if (open) {
-      c.fillStyle = shade(face, -44);
-      c.fillText(RUNES[t.symbol], t.sx + 1.5, t.sy + 2);
+      c.fillStyle = "rgba(0,0,0,0.35)";
+      c.fillText(RUNES[t.symbol], t.sx + 1.5, t.sy + 3);
+      const glow = c.createRadialGradient(t.sx, t.sy, 2, t.sx, t.sy, 30);
+      glow.addColorStop(0, RUNE_COLORS[t.symbol]);
+      glow.addColorStop(1, "transparent");
+      c.globalAlpha = 0.25;
+      c.fillStyle = glow;
+      c.beginPath();
+      c.arc(t.sx, t.sy, 30, 0, Math.PI * 2);
+      c.fill();
+      c.globalAlpha = 1;
       c.fillStyle = RUNE_COLORS[t.symbol];
       c.fillText(RUNES[t.symbol], t.sx, t.sy);
     } else {
-      c.globalAlpha = 0.35;
+      c.globalAlpha = 0.4;
       c.fillStyle = RUNE_COLORS[t.symbol];
       c.fillText(RUNES[t.symbol], t.sx, t.sy);
       c.globalAlpha = 1;
     }
 
-    // ---- Seçili vurgusu ----
+    // ---- Secili vurgusu ----
     if (selected) {
-      c.strokeStyle = "rgba(255,176,32,0.55)";
-      c.lineWidth = 2.5;
+      c.strokeStyle = "rgba(255,176,32,0.4)";
+      c.lineWidth = 2;
       c.beginPath();
-      c.roundRect(x - 5, yTop - 5, w + 10, h + 10, 12);
+      c.roundRect(x - 6, yTop - 6, w + 12, h + 12, 13);
       c.stroke();
     }
   }
+
 }
