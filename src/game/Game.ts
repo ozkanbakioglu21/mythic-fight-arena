@@ -202,6 +202,17 @@ export class Game {
   private won = false;
   private history: Array<{ a: number; b: number }> = [];
   private levelIndex = 0;
+  private tray: number[] = []; // hazneye düşen eşlenen rünler (max 4)
+  private shards: Array<{
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    life: number;
+    max: number;
+    color: string;
+    r: number;
+  }> = [];
 
   onHud?: (h: HudState) => void;
 
@@ -330,6 +341,8 @@ export class Game {
     this.seconds = 0;
     this.won = false;
     this.history = [];
+    this.tray = [];
+    this.shards = [];
     this.buildLayout();
     this.emitHud();
   }
@@ -416,12 +429,17 @@ export class Game {
       return;
     }
     if (selected.symbol === target.symbol) {
-      // Eşleşti -> kaldır.
+      // Eşleşti -> kaldır, hazneye düşür.
       selected.removed = true;
       target.removed = true;
       this.history.push({ a: selected.id, b: target.id });
+      this.tray.push(selected.symbol, target.symbol);
       this.moves++;
       this.selectedId = null;
+      // Hazne tamamen doldu (4 taş = 2 eşleşme) -> kır.
+      if (this.tray.length >= 4) {
+        this.breakTray();
+      }
       // Kazanma.
       if (this.tiles.every((t) => t.removed)) {
         this.won = true;
@@ -445,6 +463,43 @@ export class Game {
   private update(dt: number): void {
     if (this.won) return;
     this.seconds += dt;
+    // Kırılma parçalarını güncelle.
+    for (const s of this.shards) {
+      s.life -= dt;
+      s.vy += 900 * dt; // yerçekimi
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+      if (s.y > CANVAS_H - 30) {
+        s.y = CANVAS_H - 30;
+        s.vy *= -0.4;
+        s.vx *= 0.7;
+      }
+    }
+    this.shards = this.shards.filter((s) => s.life > 0);
+  }
+
+  /** Haznedeki 4 taşı parçalara ayırıp patlatır ve hazneyi boşaltır. */
+  private breakTray(): void {
+    const color = RUNE_COLORS;
+    for (let i = 0; i < this.tray.length; i++) {
+      const bx = CANVAS_W / 2 + (i - 1.5) * 40;
+      const sym = this.tray[i];
+      for (let k = 0; k < 6; k++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 60 + Math.random() * 180;
+        this.shards.push({
+          x: bx,
+          y: CANVAS_H - 58,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd - 120,
+          life: 0.7 + Math.random() * 0.5,
+          max: 1,
+          color: color[sym],
+          r: 3 + Math.random() * 5,
+        });
+      }
+    }
+    this.tray = [];
   }
 
   private emitHud(): void {
