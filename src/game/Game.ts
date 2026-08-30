@@ -5,6 +5,20 @@
 const CANVAS_W = 1280;
 const CANVAS_H = 720;
 
+// Bir hex rengini belirli oranda açık (+) ya da koyu (-) yapar.
+function shade(hex: string, percent: number): string {
+  const f = parseInt(hex.slice(1), 16);
+  const R = (f >> 16) & 255;
+  const G = (f >> 8) & 255;
+  const B = f & 255;
+  const t = percent < 0 ? 0 : 255;
+  const p = Math.abs(percent) / 100;
+  const r = Math.round((t - R) * p) + R;
+  const g = Math.round((t - G) * p) + G;
+  const b = Math.round((t - B) * p) + B;
+  return "#" + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
 export interface Tile {
   id: number;
   symbol: number; // rün indeksi
@@ -557,24 +571,23 @@ export class Game {
     c.fillStyle = "rgba(0,0,0,0.22)";
     c.fill();
 
-    // ---- Palet: açık (fildişi/turkuaz) vs kapalı (jade) ----
+    // ---- Renk paleti: her rün ailesine özel canlı renk ----
+    const base = RUNE_COLORS[t.symbol];
     const pal = open
       ? {
-          top1: "#fffdf7",
-          top2: "#e6dcc2",
-          speck: "#d8c9a8",
-          sideL: "#ccbf9d",
-          sideD: "#a4916b",
-          rim: "#8d7a52",
+          top1: shade(base, 56),
+          top2: shade(base, 34),
+          sideL: shade(base, -18),
+          sideD: shade(base, -36),
+          rim: shade(base, -22),
           sel: "#ffb020",
         }
       : {
-          top1: "#d5ecd9",
-          top2: "#8fc3a0",
-          speck: "#79b18b",
-          sideL: "#77ad8d",
-          sideD: "#4f8766",
-          rim: "#3a6b50",
+          top1: shade(base, -52),
+          top2: shade(base, -62),
+          sideL: shade(base, -58),
+          sideD: shade(base, -68),
+          rim: shade(base, -70),
           sel: "#ffb020",
         };
 
@@ -618,27 +631,44 @@ export class Game {
     rg.addColorStop(0, pal.top1);
     rg.addColorStop(1, pal.top2);
     c.fillStyle = rg;
-    c.strokeStyle = "rgba(0,0,0,0.28)";
+    c.strokeStyle = "rgba(0,0,0,0.3)";
     c.lineWidth = 2;
     c.beginPath();
     c.roundRect(x, yTop, w, h, 7);
     c.fill();
     c.stroke();
 
-    // ---- Mermer doku (taş başına sabit damarlar) ----
-    const d1 = (t.id * 37) % 11;
-    c.strokeStyle = open ? "rgba(140,120,80,0.16)" : "rgba(40,90,60,0.16)";
-    c.lineWidth = 1.5;
-    c.lineCap = "round";
-    for (let i = 0; i < 3; i++) {
-      const yy = yTop + 8 + ((t.id * 13 + i * 29) % (h - 16));
-      const x0 = x + 4 + ((d1 + i * 7) % (w - 12));
+    // ---- Kapalı taş deseni: keyifli dokuma çizgileri ----
+    if (!open) {
+      c.save();
+      c.globalAlpha = 0.18;
+      c.strokeStyle = "#ffffff";
+      c.lineWidth = 1;
+      for (let i = -1; i < 4; i++) {
+        const off = x + i * 12;
+        c.beginPath();
+        c.moveTo(off, yTop);
+        c.lineTo(off + 10, yTop + h);
+        c.stroke();
+      }
+      c.restore();
+    } else {
+      // ---- İç madalyon (renkli koyu panel): rünü öne çıkarır ----
+      c.fillStyle = shade(base, -26);
       c.beginPath();
-      c.moveTo(x0, yy);
-      c.quadraticCurveTo(
-        x0 + 8, yy + ((i % 2 === 0 ? 1 : -1) * 5),
-        x0 + 16, yy,
-      );
+      c.roundRect(x + 8, yTop + 12, w - 16, h - 24, 12);
+      c.fill();
+      // Madalyon çerçevesi.
+      c.strokeStyle = shade(base, -50);
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.roundRect(x + 8, yTop + 12, w - 16, h - 24, 12);
+      c.stroke();
+      // Madalyon üst ışığı.
+      c.strokeStyle = "rgba(255,255,255,0.18)";
+      c.lineWidth = 1;
+      c.beginPath();
+      c.roundRect(x + 8, yTop + 12, w - 16, h - 24, 12);
       c.stroke();
     }
 
@@ -656,26 +686,23 @@ export class Game {
     c.roundRect(x, yTop, w, h, 7);
     c.stroke();
 
-    // ---- Oyma rün ----
+    // ---- Rün ----
     if (open) {
-      const col = RUNE_COLORS[t.symbol];
-      c.font = "bold 32px 'Segoe UI Historic','Noto Sans Old Turkic',serif";
+      c.font = "bold 34px 'Segoe UI Historic','Noto Sans Old Turkic',serif";
       c.textAlign = "center";
       c.textBaseline = "alphabetic";
-      // gölge (oyuk içi) — aşağı-sağa
-      c.fillStyle = "rgba(255,255,255,0.7)";
-      c.fillText(RUNES[t.symbol], t.sx - 1.5, t.sy + 1.5);
-      // koyu oyuk kenar
-      c.fillStyle = "rgba(60,40,20,0.5)";
-      c.fillText(RUNES[t.symbol], t.sx + 1.5, t.sy + 2.5);
-      // ana rün
-      c.fillStyle = col;
+      // hafif gölge (madalyon üstünde)
+      c.fillStyle = shade(base, -55);
+      c.fillText(RUNES[t.symbol], t.sx + 1.5, t.sy + 2);
+      // parlak beyaz rün
+      c.fillStyle = "#ffffff";
       c.fillText(RUNES[t.symbol], t.sx, t.sy);
     } else {
-      c.font = "bold 26px serif";
+      // Kapalı taşta rün gizli; çok silik bir ipucu kalır.
+      c.font = "bold 24px serif";
       c.textAlign = "center";
       c.textBaseline = "alphabetic";
-      c.fillStyle = "rgba(8,30,20,0.55)";
+      c.fillStyle = "rgba(255,255,255,0.18)";
       c.fillText(RUNES[t.symbol], t.sx, t.sy);
     }
 
