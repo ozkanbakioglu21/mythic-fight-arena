@@ -940,7 +940,7 @@ export class Game {
       (open ? "bold 36px " : "bold 26px ") +
       "'Segoe UI Historic','Noto Sans Old Turkic',serif";
     c.textAlign = "center";
-    c.textBaseline = "alphabetic";
+    c.textBaseline = "middle";
     if (open) {
       c.fillStyle = "rgba(0,0,0,0.35)";
       c.fillText(RUNES[t.symbol], t.sx + 1.5, t.sy + 3);
