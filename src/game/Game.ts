@@ -150,10 +150,10 @@ function mulberry32(seed: number): () => number {
 // her zaman aynı dizimi üretir.
 function randomShape(levelIndex: number): Array<[number, number]> {
   const rng = mulberry32(levelIndex * 104729 + 13);
-  const cols = 8;
-  const rows = 5;
+  const cols = 12;
+  const rows = 6;
   const grid = new Set<string>();
-  const blocks = 2 + Math.floor(rng() * 2); // 2..3 blok (max 27 hücre <= 32)
+  const blocks = 3 + (levelIndex % 6); // 2..3 blok (max 27 hücre <= 32)
   const sizes: Array<[number, number]> = [
     [2, 2],
     [2, 3],
@@ -272,7 +272,7 @@ export class Game {
     // kalkınca alttakiler açılır -> her seviye her zaman çözülebilir.
     const def = this.level();
     const cells = def.cells;
-    const runes = cells.length / 2;
+    const runes = Math.min(16, Math.floor(cells.length / 2));
 
     const symbols: number[] = [];
     for (let s = 0; s < runes; s++) {
@@ -295,6 +295,7 @@ export class Game {
 
     let idx = 0;
     for (const [col, row] of cells) {
+      if (idx + 2 > symbols.length) break;
       const s0 = symbols[idx++];
       const s1 = symbols[idx++];
       this.tiles.push(this.makeTile(s0, col, row, 0));
