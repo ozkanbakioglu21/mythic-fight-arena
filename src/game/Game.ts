@@ -47,6 +47,12 @@ const RUNES = [
   "𐰀", "𐰆", "𐰉", "𐰒", "𐰤", "𐰞", "𐰱", "𐰾",
   "𐰋", "𐰑", "𐰚", "𐰃", "𐰅", "𐰇", "𐰈", "𐰢",
 ];
+
+// Her rün sembolüne özel renk (açık taş üzerinde okunaklı, doygun tonlar).
+const RUNE_COLORS = [
+  "#c0392b", "#e07b39", "#2e86c1", "#27ae60", "#8e44ad", "#d35400", "#16a085", "#7d3c98",
+  "#c1286f", "#6c8e23", "#e8432f", "#0e7ac7", "#9b5de5", "#f1a208", "#0ca3b2", "#7d4fd6",
+];
 const TILE_W = 58;
 const TILE_H = 94;
 const GAP = 14;
@@ -731,8 +737,8 @@ export class Game {
       // hafif gölge (madalyon üstünde)
       c.fillStyle = shade(base, -55);
       c.fillText(RUNES[t.symbol], t.sx + 1.5, t.sy + 2);
-      // parlak beyaz rün
-      c.fillStyle = "#ffffff";
+      // renkli rün (sembole özel)
+      c.fillStyle = RUNE_COLORS[t.symbol];
       c.fillText(RUNES[t.symbol], t.sx, t.sy);
     } else {
       // Kapalı taşta rün gizli; çok silik bir ipucu kalır.
