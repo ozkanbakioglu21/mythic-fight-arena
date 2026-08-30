@@ -39,8 +39,8 @@ const RUNE_COLORS = [
   "#7a5cc8",
 ];
 
-const TILE_W = 96;
-const TILE_H = 50;
+const TILE_W = 58;
+const TILE_H = 94;
 const GAP = 8;
 
 export class Game {
@@ -388,30 +388,30 @@ export class Game {
     c.roundRect(x, yTop, w, TILE_H - 4, 8);
     c.stroke();
 
-    // Domino ayırıcı çizgi (üst yüzey ortasında yatay).
+    // Domino ayırıcı çizgi (üst yüzey ortasında dikey).
     c.strokeStyle = open ? "rgba(60,90,110,0.5)" : "rgba(30,50,70,0.45)";
     c.lineWidth = 1.5;
     c.beginPath();
-    c.moveTo(x + 16, t.sy + 6);
-    c.lineTo(x + w - 16, t.sy + 6);
+    c.moveTo(t.sx + 6, yTop + 16);
+    c.lineTo(t.sx + 6, yTop + TILE_H - 20);
     c.stroke();
 
     // Rün (üst yüzeyde, oyma hissi için önce hafif gölge sonra net rün).
     if (open) {
-      c.font = "bold 26px 'Segoe UI Historic','Noto Sans Old Turkic',serif";
+      c.font = "bold 30px 'Segoe UI Historic','Noto Sans Old Turkic',serif";
       c.textAlign = "center";
       c.textBaseline = "middle";
       c.fillStyle = "rgba(0,0,0,0.18)";
-      c.fillText(RUNES[t.symbol], t.sx + depth * 0.35 + 1.5, t.sy - 8);
+      c.fillText(RUNES[t.symbol], t.sx - 8, t.sy - 2);
       c.fillStyle = RUNE_COLORS[t.symbol];
-      c.fillText(RUNES[t.symbol], t.sx + depth * 0.35, t.sy - 10);
+      c.fillText(RUNES[t.symbol], t.sx - 8, t.sy - 3);
       c.textBaseline = "alphabetic";
     } else {
       c.fillStyle = "rgba(14,36,52,0.55)";
-      c.font = "bold 22px serif";
+      c.font = "bold 26px serif";
       c.textAlign = "center";
       c.textBaseline = "middle";
-      c.fillText(RUNES[t.symbol], t.sx + depth * 0.35, t.sy - 10);
+      c.fillText(RUNES[t.symbol], t.sx - 8, t.sy - 3);
       c.textBaseline = "alphabetic";
     }
 
