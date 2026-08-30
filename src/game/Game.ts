@@ -324,58 +324,89 @@ export class Game {
     selected: boolean,
   ): void {
     const w = TILE_W;
-    const h = TILE_H;
+    const depth = 16; // taş kalınlığı (3B derinlik)
     const x = t.sx - w / 2;
-    const y = t.sy - h / 2;
+    const yTop = t.sy - TILE_H / 2; // üst yüzey üst kenarı
 
-    // Gölge.
-    c.fillStyle = "rgba(0,0,0,0.35)";
+    // Yerdeki gölge.
+    c.fillStyle = open ? "rgba(0,0,0,0.45)" : "rgba(0,0,0,0.3)";
     c.beginPath();
-    c.roundRect(x + 3, y + 4, w, h, 8);
+    c.ellipse(t.sx + 3, yTop + TILE_H - 6 + depth, w / 2 + 6, 14, 0, 0, Math.PI * 2);
     c.fill();
 
-    // Taş gövdesi.
-    if (open) {
-      const grad = c.createLinearGradient(x, y, x, y + h);
-      grad.addColorStop(0, "#eaf6ff");
-      grad.addColorStop(1, "#bcd8ea");
-      c.fillStyle = grad;
-    } else {
-      const grad = c.createLinearGradient(x, y, x, y + h);
-      grad.addColorStop(0, "#8fb0c4");
-      grad.addColorStop(1, "#6f92a8");
-      c.fillStyle = grad;
-    }
+    // Renk temel tonları (açık -> kapalı ayırır).
+    const top = open ? "#f4fbff" : "#a7c4d6";
+    const topShade = open ? "#d6eaf5" : "#89abbf";
+    const front = open ? "#8fb0c4" : "#5f7f96";
+    const right = open ? "#6f92a8" : "#4c6b82";
+    const rim = selected ? "#ffd24a" : open ? "#5c8ca8" : "#48677a";
+
+    // Sağ yan yüzey (derinlik).
+    c.fillStyle = right;
     c.beginPath();
-    c.roundRect(x, y, w, h, 8);
+    c.moveTo(x + w, yTop + 4);
+    c.lineTo(x + w + depth, yTop + 4 + depth * 0.7);
+    c.lineTo(x + w + depth, yTop + TILE_H - 4 + depth * 0.7);
+    c.lineTo(x + w, yTop + TILE_H - 4);
+    c.closePath();
     c.fill();
-    c.strokeStyle = selected ? "#ffd24a" : open ? "#3c6a8a" : "#54748a";
+
+    // Ön yan yüzey (derinlik).
+    c.fillStyle = front;
+    c.beginPath();
+    c.moveTo(x + 4, yTop + TILE_H - 4);
+    c.lineTo(x + 4 + depth, yTop + TILE_H - 4 + depth * 0.7);
+    c.lineTo(x + w - 4 + depth, yTop + TILE_H - 4 + depth * 0.7);
+    c.lineTo(x + w - 4, yTop + TILE_H - 4);
+    c.closePath();
+    c.fill();
+
+    // Üst yüzey (gradyan: üstten ışık).
+    const g = c.createLinearGradient(x, yTop, x, yTop + TILE_H);
+    g.addColorStop(0, top);
+    g.addColorStop(1, topShade);
+    c.fillStyle = g;
+    c.beginPath();
+    c.roundRect(x, yTop, w, TILE_H - 4, 8);
+    c.fill();
+    // Üst yüzey ince ışık çizgisi.
+    c.fillStyle = "rgba(255,255,255,0.55)";
+    c.beginPath();
+    c.roundRect(x + 4, yTop + 3, w - 8, 4, 3);
+    c.fill();
+
+    // Kenar çizgisi.
+    c.strokeStyle = rim;
     c.lineWidth = selected ? 4 : 2;
+    c.beginPath();
+    c.roundRect(x, yTop, w, TILE_H - 4, 8);
     c.stroke();
 
-    // Rün.
+    // Rün (üst yüzeyde, oyma hissi için önce hafif gölge sonra net rün).
     if (open) {
-      c.fillStyle = RUNE_COLORS[t.symbol];
       c.font = "bold 34px 'Segoe UI Historic','Noto Sans Old Turkic',serif";
       c.textAlign = "center";
       c.textBaseline = "middle";
-      c.fillText(RUNES[t.symbol], t.sx, t.sy);
+      c.fillStyle = "rgba(0,0,0,0.18)";
+      c.fillText(RUNES[t.symbol], t.sx + depth * 0.35 + 1.5, t.sy - 0.5);
+      c.fillStyle = RUNE_COLORS[t.symbol];
+      c.fillText(RUNES[t.symbol], t.sx + depth * 0.35, t.sy - 2);
       c.textBaseline = "alphabetic";
-    } else if (selected) {
-      c.fillStyle = "#16384a";
-      c.font = "bold 26px serif";
+    } else {
+      c.fillStyle = "rgba(14,36,52,0.55)";
+      c.font = "bold 28px serif";
       c.textAlign = "center";
       c.textBaseline = "middle";
-      c.fillText(RUNES[t.symbol], t.sx, t.sy);
+      c.fillText(RUNES[t.symbol], t.sx + depth * 0.35, t.sy - 2);
       c.textBaseline = "alphabetic";
     }
 
-    // Açık ama seçili değilse küçük glow.
+    // Açık ve seçili değilse üstte parlak parlama.
     if (open && !selected) {
-      c.strokeStyle = "rgba(255,255,255,0.4)";
+      c.strokeStyle = "rgba(255,255,255,0.45)";
       c.lineWidth = 1;
       c.beginPath();
-      c.roundRect(x - 3, y - 3, w + 6, h + 6, 10);
+      c.roundRect(x - 4, yTop - 4, w + 8, TILE_H - 4 + 8, 12);
       c.stroke();
     }
   }
