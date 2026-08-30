@@ -129,6 +129,65 @@ function ringShape(cols: number, rows: number): Array<[number, number]> {
   return [...outer, ...inner];
 }
 
+// Deterministik (seeded) rastgele sayı üretici: aynı seviye her zaman
+// aynı dizim üretir, böylece "yeniden oyna" seviyeyi değiştirmez.
+function mulberry32(seed: number): () => number {
+  let s = seed >>> 0;
+  return function () {
+    s |= 0;
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Seviye ilerledikçe rastgele yeni bir dizim üretir: birkaç bitişik blok
+// (adacık) rastgele yerleştirilir. Her bloğun hücre sayısı çifttir (2x2, 2x3,
+// 3x2, 3x3), toplam çift sayıya yuvarlanır, böylece her dizim çözülebilir ve
+// rün havuzunu (16 rün = 32 hücre) aşmaz. Deterministik (seeded): aynı seviye
+// her zaman aynı dizimi üretir.
+function randomShape(levelIndex: number): Array<[number, number]> {
+  const rng = mulberry32(levelIndex * 104729 + 13);
+  const cols = 8;
+  const rows = 5;
+  const grid = new Set<string>();
+  const blocks = 2 + Math.floor(rng() * 2); // 2..3 blok (max 27 hücre <= 32)
+  const sizes: Array<[number, number]> = [
+    [2, 2],
+    [2, 3],
+    [3, 2],
+    [3, 3],
+  ];
+  for (let b = 0; b < blocks; b++) {
+    const [bw, bh] = sizes[Math.floor(rng() * sizes.length)];
+    const cx = Math.floor(rng() * (cols - bw + 1));
+    const cy = Math.floor(rng() * (rows - bh + 1));
+    for (let y = cy; y < cy + bh; y++)
+      for (let x = cx; x < cx + bw; x++) grid.add(`${x},${y}`);
+  }
+  const cells = [...grid].map((s) => {
+    const p = s.split(",").map(Number);
+    return [p[0], p[1]] as [number, number];
+  });
+  // Çift hücre garantisi (çözülebilirlik).
+  if (cells.length % 2 !== 0) cells.pop();
+  return cells;
+}
+
+const RANDOM_BG: Array<[string, string]> = [
+  ["#101f3a", "#1c3052"],
+  ["#112a3a", "#1e4556"],
+  ["#231a42", "#31285c"],
+  ["#0d2a24", "#173e34"],
+  ["#3a2a10", "#52401c"],
+  ["#2a1430", "#3e2048"],
+  ["#1f3a30", "#2c5447"],
+  ["#402a1c", "#5a3b29"],
+  ["#14203f", "#203057"],
+  ["#33221f", "#4a3130"],
+];
+
 export class Game {
   private ctx: CanvasRenderingContext2D;
   private raf = 0;
@@ -185,7 +244,13 @@ export class Game {
 
   // ---- Yerleşim ----
   private level(): { name: string; cells: Array<[number, number]>; bg: [string, string] } {
-    return LEVELS[this.levelIndex % LEVELS.length];
+    if (this.levelIndex < LEVELS.length) {
+      return LEVELS[this.levelIndex];
+    }
+    // Elle tanımlı seviyeler bittikten sonra rastgele (deterministik) dizim.
+    const cells = randomShape(this.levelIndex);
+    const bg = RANDOM_BG[this.levelIndex % RANDOM_BG.length];
+    return { name: `Rastgele #${this.levelIndex + 1}`, cells, bg };
   }
 
   private buildLayout(): void {
@@ -268,9 +333,10 @@ export class Game {
     this.emitHud();
   }
 
-  /** Bir sonraki seviyeye geçer; son seviyeden sonra başa döner. */
+  /** Bir sonraki seviyeye geçer; elle tanımlılar bittikten sonra rastgele
+   *  seviyeler başlar ve 1000+ farklı dizime kadar ilerlenebilir. */
   nextLevel(): void {
-    this.levelIndex = (this.levelIndex + 1) % LEVELS.length;
+    this.levelIndex++;
     this.newGame();
   }
 
@@ -404,7 +470,7 @@ export class Game {
       selected: this.selectedId === null ? -1 : this.selectedId,
       won: this.won,
       stuck,
-      level: this.levelIndex % LEVELS.length,
+      level: this.levelIndex,
       levelName: this.level().name,
     });
   }
@@ -427,7 +493,7 @@ export class Game {
     c.fillText("Göktürk Mahjong", 90, 52);
     c.font = "bold 22px Georgia";
     c.fillStyle = "#9fd0e0";
-    c.fillText(`Seviye ${this.levelIndex % LEVELS.length + 1} · ${def.name}`, 90, 84);
+    c.fillText(`Seviye ${this.levelIndex + 1} · ${def.name}`, 90, 84);
 
     // Yerleşimin çerçevesi (taş alanına göre).
     const boxW = this.layoutCols * (TILE_W + GAP) + GAP;
