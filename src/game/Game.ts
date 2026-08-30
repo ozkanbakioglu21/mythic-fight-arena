@@ -203,6 +203,7 @@ export class Game {
   private history: Array<{ a: number; b: number }> = [];
   private levelIndex = 0;
   private tray: Array<{ id: number; symbol: number }> = []; // hazneye düşen eşlenen rünler (max 4)
+  private motifsCache: HTMLCanvasElement | null = null;
   private shards: Array<{
     x: number;
     y: number;
@@ -537,6 +538,74 @@ export class Game {
     });
   }
 
+  /** Göktürk motifleri: arka plan rünleri, altın tonlu bantlar (bir kez çizilip önbelleğe alınır). */
+  private drawMotifs(c: CanvasRenderingContext2D): void {
+    if (!this.motifsCache) {
+      const off = document.createElement("canvas");
+      off.width = CANVAS_W;
+      off.height = CANVAS_H;
+      const m = off.getContext("2d")!;
+      m.textAlign = "center";
+
+      // Zayıf arka plan rünleri (Orhun alfabesi su izi).
+      m.save();
+      m.globalAlpha = 0.06;
+      m.fillStyle = "#ffffff";
+      m.font = "150px 'Segoe UI Historic','Noto Sans Old Turkic',serif";
+      const spots: Array<[number, number, number]> = [
+        [130, 205, 0], [355, 140, 1], [560, 265, 4], [765, 130, 5],
+        [1055, 100, 8], [1230, 300, 9], [90, 545, 12], [1180, 600, 13],
+      ];
+      for (const [x, y, i] of spots) {
+        m.save();
+        m.translate(x, y);
+        m.rotate(-0.5 + i * 0.13);
+        m.fillText(RUNES[i % RUNES.length], 0, 0);
+        m.restore();
+      }
+      m.restore();
+
+      // Altın tonlu şerit bantları: basamak (merdiven) + baklava motifi.
+      const gold = (a: number) => `rgba(212,175,55,${a})`;
+      const band = (yBase: number, dir: 1 | -1) => {
+        m.strokeStyle = gold(0.14);
+        m.lineWidth = 2;
+        m.beginPath();
+        m.moveTo(44, yBase);
+        m.lineTo(CANVAS_W - 44, yBase);
+        m.stroke();
+        // Baklava (elmas) noktaları.
+        m.fillStyle = gold(0.2);
+        for (let x = 44; x <= CANVAS_W - 44; x += 20) {
+          m.beginPath();
+          m.moveTo(x, yBase - 13 * dir);
+          m.lineTo(x + 5, yBase - 8 * dir);
+          m.lineTo(x, yBase - 3 * dir);
+          m.lineTo(x - 5, yBase - 8 * dir);
+          m.closePath();
+          m.fill();
+        }
+        // Basamak (merdiven) motifi.
+        m.fillStyle = gold(0.1);
+        const sy = yBase + 8 * dir;
+        for (let x = 40; x <= CANVAS_W - 44; x += 40) {
+          m.beginPath();
+          m.moveTo(x + 8, sy - 8 * dir);
+          m.lineTo(x + 16, sy - 8 * dir);
+          m.lineTo(x + 16, sy);
+          m.lineTo(x + 26, sy);
+          m.lineTo(x + 26, sy + 8 * dir);
+          m.fill();
+        }
+      };
+      band(102, 1); // başlık altı
+      band(CANVAS_H - 92, -1); // hazne üstü
+
+      this.motifsCache = off;
+    }
+    c.drawImage(this.motifsCache, 0, 0);
+  }
+
   // ---- Render ----
   private render(): void {
     const c = this.ctx;
@@ -547,6 +616,7 @@ export class Game {
     g.addColorStop(1, def.bg[1]);
     c.fillStyle = g;
     c.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    this.drawMotifs(c);
 
     // Başlık + seviye.
     c.fillStyle = "#d4e8f2";
@@ -565,6 +635,27 @@ export class Game {
     c.strokeStyle = "rgba(255,255,255,0.08)";
     c.lineWidth = 2;
     c.strokeRect(bx - 12, by - 12, boxW + 24, boxH + 24);
+
+    // Köşe tamga süsleri (tahta çerçevesi etrafında dört nokta).
+    const ts = 13;
+    c.strokeStyle = "rgba(212,175,55,0.55)";
+    c.lineWidth = 1.8;
+    const corners: Array<[number, number]> = [
+      [bx - 22 - ts, by - 22 - ts],
+      [bx + boxW + 24 + ts, by - 22 - ts],
+      [bx - 22 - ts, by + boxH + 26 + ts],
+      [bx + boxW + 24 + ts, by + boxH + 26 + ts],
+    ];
+    for (const [cx2, cy2] of corners) {
+      c.strokeRect(cx2 - ts, cy2 - ts, ts * 2, ts * 2);
+      c.beginPath();
+      c.moveTo(cx2, cy2 - ts);
+      c.lineTo(cx2 + ts, cy2);
+      c.lineTo(cx2, cy2 + ts);
+      c.lineTo(cx2 - ts, cy2);
+      c.closePath();
+      c.stroke();
+    }
 
     // Taşları çiz (en üst katman önce değil, alt→üst sıralama render etkisi).
     const sorted = [...this.tiles].sort((a, b) => a.layer - b.layer);
