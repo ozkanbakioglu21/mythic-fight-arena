@@ -2,6 +2,9 @@
 // Kurallar: aynı Göktürk rününe sahip iki AÇIK taşı seçip eşleştir, kaldır.
 // Tüm taşlar kalkınca oyunu kazanırsın.
 
+const CANVAS_W = 1280;
+const CANVAS_H = 720;
+
 export interface Tile {
   id: number;
   symbol: number; // rün indeksi
@@ -36,9 +39,9 @@ const RUNE_COLORS = [
   "#7a5cc8",
 ];
 
-const TILE_W = 58;
-const TILE_H = 72;
-const GAP = 6;
+const TILE_W = 96;
+const TILE_H = 50;
+const GAP = 8;
 
 export class Game {
   private ctx: CanvasRenderingContext2D;
@@ -56,8 +59,8 @@ export class Game {
   onHud?: (h: HudState) => void;
 
   constructor(private canvas: HTMLCanvasElement) {
-    canvas.width = 1280;
-    canvas.height = 720;
+    canvas.width = CANVAS_W;
+    canvas.height = CANVAS_H;
     this.ctx = canvas.getContext("2d")!;
     this.newGame();
   }
@@ -123,7 +126,10 @@ export class Game {
     // Üst katman aynı hücrenin üzerine hafifçe kayarak biner (mahjong hissi).
     const ox = layer * 12;
     const oy = layer * -14;
-    const sx = 130 + col * (TILE_W + GAP) + ox;
+    const cols = 4;
+    const boardW = cols * (TILE_W + GAP);
+    const sx0 = (CANVAS_W - boardW) / 2;
+    const sx = sx0 + col * (TILE_W + GAP) + ox;
     const sy = 120 + row * (TILE_H + GAP) + oy;
     return {
       id: col * 100 + row * 10 + layer,
@@ -382,22 +388,30 @@ export class Game {
     c.roundRect(x, yTop, w, TILE_H - 4, 8);
     c.stroke();
 
+    // Domino ayırıcı çizgi (üst yüzey ortasında yatay).
+    c.strokeStyle = open ? "rgba(60,90,110,0.5)" : "rgba(30,50,70,0.45)";
+    c.lineWidth = 1.5;
+    c.beginPath();
+    c.moveTo(x + 16, t.sy + 6);
+    c.lineTo(x + w - 16, t.sy + 6);
+    c.stroke();
+
     // Rün (üst yüzeyde, oyma hissi için önce hafif gölge sonra net rün).
     if (open) {
-      c.font = "bold 34px 'Segoe UI Historic','Noto Sans Old Turkic',serif";
+      c.font = "bold 26px 'Segoe UI Historic','Noto Sans Old Turkic',serif";
       c.textAlign = "center";
       c.textBaseline = "middle";
       c.fillStyle = "rgba(0,0,0,0.18)";
-      c.fillText(RUNES[t.symbol], t.sx + depth * 0.35 + 1.5, t.sy - 0.5);
+      c.fillText(RUNES[t.symbol], t.sx + depth * 0.35 + 1.5, t.sy - 8);
       c.fillStyle = RUNE_COLORS[t.symbol];
-      c.fillText(RUNES[t.symbol], t.sx + depth * 0.35, t.sy - 2);
+      c.fillText(RUNES[t.symbol], t.sx + depth * 0.35, t.sy - 10);
       c.textBaseline = "alphabetic";
     } else {
       c.fillStyle = "rgba(14,36,52,0.55)";
-      c.font = "bold 28px serif";
+      c.font = "bold 22px serif";
       c.textAlign = "center";
       c.textBaseline = "middle";
-      c.fillText(RUNES[t.symbol], t.sx + depth * 0.35, t.sy - 2);
+      c.fillText(RUNES[t.symbol], t.sx + depth * 0.35, t.sy - 10);
       c.textBaseline = "alphabetic";
     }
 
