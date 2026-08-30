@@ -68,7 +68,7 @@ const RUNE_COLORS = [
 
 const TILE_W = 58;
 const TILE_H = 94;
-const GAP = 8;
+const GAP = 14;
 
 // Seviye dizimleri. Her hücre 2 katman taş (üst açık, alt kapalı) alır,
 // böylece her seviye her zaman çözülebilir. Hücre sayısı = rün sayısı * 2.
@@ -556,44 +556,56 @@ export class Game {
   ): void {
     const w = TILE_W;
     const h = TILE_H - 3; // üst yüzey yüksekliği
-    const depth = 14; // kalınlık (3B derinlik)
+    const depth = 20; // gerçekçi kalın gövde (3B derinlik)
     const x = t.sx - w / 2;
     const yTop = t.sy - TILE_H / 2; // üst yüzey üst kenarı
     const cx = t.sx;
 
-    // ---- Yumuşak zemin gölgesi (katmanlı) ----
+    // ---- Yumuşak zemin gölgesi (katmanlı + ambient occlusion) ----
+    for (let k = 0; k < 4; k++) {
+      c.beginPath();
+      c.ellipse(
+        cx + 3, yTop + h + depth * 0.7 + 3 + k * 3,
+        w / 2 + 6 + k * 3, 11 + k * 5,
+        0, 0, Math.PI * 2,
+      );
+      c.fillStyle = `rgba(0,0,0,${0.42 - k * 0.08})`;
+      c.fill();
+    }
+    // Zeminle temas yeri en koyu (ambient occlusion).
     c.beginPath();
-    c.ellipse(cx + 2, yTop + h + depth * 0.7 + 4, w / 2 + 5, 12, 0, 0, Math.PI * 2);
-    c.fillStyle = "rgba(0,0,0,0.4)";
-    c.fill();
-    c.beginPath();
-    c.ellipse(cx + 2, yTop + h + depth * 0.7 + 6, w / 2 + 9, 19, 0, 0, Math.PI * 2);
-    c.fillStyle = "rgba(0,0,0,0.22)";
+    c.ellipse(cx + 3, yTop + h + 2, w / 2 - 2, 6, 0, 0, Math.PI * 2);
+    c.fillStyle = "rgba(0,0,0,0.5)";
     c.fill();
 
     // ---- Renk paleti: her rün ailesine özel canlı renk ----
     const base = RUNE_COLORS[t.symbol];
     const pal = open
       ? {
-          top1: shade(base, 56),
-          top2: shade(base, 34),
-          sideL: shade(base, -18),
-          sideD: shade(base, -36),
-          rim: shade(base, -22),
+          top1: shade(base, 58),
+          top2: shade(base, 30),
+          sideA: shade(base, -8),
+          sideB: shade(base, -26),
+          sideC: shade(base, -44),
+          rim: shade(base, -24),
           sel: "#ffb020",
         }
       : {
-          top1: shade(base, -52),
+          top1: shade(base, -50),
           top2: shade(base, -62),
-          sideL: shade(base, -58),
-          sideD: shade(base, -68),
-          rim: shade(base, -70),
+          sideA: shade(base, -56),
+          sideB: shade(base, -64),
+          sideC: shade(base, -72),
+          rim: shade(base, -72),
           sel: "#ffb020",
         };
 
-    // ---- Yan yüzeyler (ışık soldan gelir: sağ yan koyu, ön yan orta) ----
-    // Sağ yan.
-    c.fillStyle = pal.sideD;
+    // ---- Sağ yan yüzey (gradyan: üstten ışık, alta koyulaşır) ----
+    const rgSide = c.createLinearGradient(0, yTop + 3, 0, yTop + h + depth * 0.7);
+    rgSide.addColorStop(0, pal.sideA);
+    rgSide.addColorStop(0.5, pal.sideB);
+    rgSide.addColorStop(1, pal.sideC);
+    c.fillStyle = rgSide;
     c.beginPath();
     c.moveTo(x + w, yTop + 3);
     c.lineTo(x + w + depth, yTop + 3 + depth * 0.7);
@@ -601,19 +613,20 @@ export class Game {
     c.lineTo(x + w, yTop + h);
     c.closePath();
     c.fill();
-    // Sağ yanın ışıklı üst kenarı.
-    c.fillStyle = pal.sideL;
+    // Sağ yanın ışıklı üst kenarı (edge highlight).
+    c.fillStyle = pal.sideA;
     c.beginPath();
     c.moveTo(x + w, yTop + 3);
     c.lineTo(x + w + depth, yTop + 3 + depth * 0.7);
-    c.lineTo(x + w + depth, yTop + 3 + depth * 0.7 + 9);
-    c.lineTo(x + w, yTop + 3 + 9);
+    c.lineTo(x + w + depth, yTop + 3 + depth * 0.7 + 10);
+    c.lineTo(x + w, yTop + 3 + 10);
     c.closePath();
     c.fill();
-    // Ön yan.
-    const fg = c.createLinearGradient(0, yTop + 3, 0, yTop + h);
-    fg.addColorStop(0, pal.sideL);
-    fg.addColorStop(1, pal.sideD);
+
+    // ---- Ön yan yüzey (gradyan) ----
+    const fg = c.createLinearGradient(0, yTop + 3, 0, yTop + h + depth * 0.7);
+    fg.addColorStop(0, pal.sideB);
+    fg.addColorStop(1, pal.sideC);
     c.fillStyle = fg;
     c.beginPath();
     c.moveTo(x + 3, yTop + h);
@@ -622,20 +635,50 @@ export class Game {
     c.lineTo(x + w - 3, yTop + h);
     c.closePath();
     c.fill();
+    // Ön yan köşe ışığı (sol alt).
+    c.fillStyle = pal.sideB;
+    c.beginPath();
+    c.moveTo(x + 3, yTop + h);
+    c.lineTo(x + 3 + 8, yTop + h);
+    c.lineTo(x + 3 + depth - 6, yTop + h + depth * 0.7 - 4);
+    c.lineTo(x + 3, yTop + h + depth * 0.7);
+    c.closePath();
+    c.fill();
 
-    // ---- Üst yüzey: radyal ışık (hafif bombeli) ----
+    // ---- Üst yüzey: çok yönlü radyal ışık (bombeli) ----
     const rg = c.createRadialGradient(
-      cx, yTop + h * 0.25, h * 0.25,
-      cx, yTop + h * 0.6, w * 0.75,
+      cx - w * 0.08, yTop + h * 0.18, h * 0.12,
+      cx, yTop + h * 0.62, w * 0.8,
     );
-    rg.addColorStop(0, pal.top1);
+    rg.addColorStop(0, shade(pal.top1, 12));
+    rg.addColorStop(0.6, pal.top1);
     rg.addColorStop(1, pal.top2);
     c.fillStyle = rg;
-    c.strokeStyle = "rgba(0,0,0,0.3)";
-    c.lineWidth = 2;
     c.beginPath();
     c.roundRect(x, yTop, w, h, 7);
     c.fill();
+
+    // Üst yüzeyin kenar profili: sol-üst aydınlık, sağ-alt kararır.
+    c.save();
+    c.clip();
+    // koyu çevre (iç gölge).
+    c.strokeStyle = "rgba(0,0,0,0.35)";
+    c.lineWidth = 5;
+    c.strokeRect(x - 2, yTop - 2, w + 4, h + 4);
+    // sol-üst kenar ışığı.
+    c.strokeStyle = "rgba(255,255,255,0.5)";
+    c.lineWidth = 3;
+    c.beginPath();
+    c.moveTo(x + 2, yTop + h - 3);
+    c.lineTo(x + 2, yTop + 5);
+    c.lineTo(x + w - 5, yTop + 5);
+    c.stroke();
+    c.restore();
+    // taşın ana çerçevesi.
+    c.strokeStyle = "rgba(0,0,0,0.25)";
+    c.lineWidth = 1.5;
+    c.beginPath();
+    c.roundRect(x, yTop, w, h, 7);
     c.stroke();
 
     // ---- Kapalı taş deseni: keyifli dokuma çizgileri ----
@@ -672,12 +715,25 @@ export class Game {
       c.stroke();
     }
 
-    // Üst yüzey parlak vurgu (cam parlaması).
-    c.strokeStyle = "rgba(255,255,255,0.6)";
-    c.lineWidth = 1;
+    // Üst yüzey parlak vurgu: yatay vernik şeridi.
+    c.strokeStyle = "rgba(255,255,255,0.55)";
+    c.lineWidth = 1.4;
     c.beginPath();
     c.roundRect(x + 5, yTop + 4, w - 10, 3.5, 2);
     c.stroke();
+    // Speküler parlama noktası (sol-üst ışık yansıması).
+    if (open) {
+      const sg = c.createRadialGradient(
+        x + w * 0.28, yTop + 9, 1,
+        x + w * 0.28, yTop + 9, w * 0.22,
+      );
+      sg.addColorStop(0, "rgba(255,255,255,0.55)");
+      sg.addColorStop(1, "rgba(255,255,255,0)");
+      c.fillStyle = sg;
+      c.beginPath();
+      c.ellipse(x + w * 0.28, yTop + 9, w * 0.22, 7, 0, 0, Math.PI * 2);
+      c.fill();
+    }
 
     // ---- Kenar çizgisi ----
     c.strokeStyle = selected ? pal.sel : pal.rim;
