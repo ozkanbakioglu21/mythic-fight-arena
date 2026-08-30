@@ -47,25 +47,6 @@ const RUNES = [
   "𐰀", "𐰆", "𐰉", "𐰒", "𐰤", "𐰞", "𐰱", "𐰾",
   "𐰋", "𐰑", "𐰚", "𐰃", "𐰅", "𐰇", "𐰈", "𐰢",
 ];
-const RUNE_COLORS = [
-  "#e05a3a",
-  "#d4af37",
-  "#3a7be0",
-  "#37b06a",
-  "#a85c8c",
-  "#e07a3a",
-  "#5c8ca8",
-  "#7a5cc8",
-  "#c85c3a",
-  "#2fb98f",
-  "#d47a2a",
-  "#4a9ee0",
-  "#e0478c",
-  "#8fbf3a",
-  "#3abfd4",
-  "#b08fe0",
-];
-
 const TILE_W = 58;
 const TILE_H = 94;
 const GAP = 14;
@@ -578,8 +559,8 @@ export class Game {
     c.fillStyle = "rgba(0,0,0,0.5)";
     c.fill();
 
-    // ---- Renk paleti: her rün ailesine özel canlı renk ----
-    const base = RUNE_COLORS[t.symbol];
+    // ---- Renk paleti: tüm taşlar tek renk (açık = fildişi, kapalı = koyu) ----
+    const base = open ? "#f3ead6" : "#3d434b";
     const pal = open
       ? {
           top1: shade(base, 58),
