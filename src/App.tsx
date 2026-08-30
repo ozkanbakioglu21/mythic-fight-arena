@@ -5,6 +5,7 @@ export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<Game | null>(null);
   const [hud, setHud] = useState<HudState | null>(null);
+  const [levelCount, setLevelCount] = useState(12);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -12,6 +13,7 @@ export default function App() {
     const game = new Game(canvas);
     gameRef.current = game;
     game.onHud = setHud;
+    setLevelCount(game.getLevelCount());
     game.start();
 
     const onKey = (e: KeyboardEvent) => {
@@ -58,13 +60,13 @@ export default function App() {
       </div>
       <div className="toolbar">
         <div className="level-picker">
-          {["1", "2", "3", "4", "5"].map((label, i) => (
+          {Array.from({ length: levelCount }, (_, i) => (
             <button
               key={i}
               className={`btn tbtn lvl ${hud?.level === i ? "active" : ""}`}
               onClick={() => gameRef.current?.goToLevel(i)}
             >
-              {label}
+              {i + 1}
             </button>
           ))}
         </div>

@@ -29,7 +29,10 @@ export interface HudState {
 }
 
 // Göktürk rünleri (Orhun alfabesi). Her biri bir "aile" = 4 taş.
-const RUNES = ["𐰀", "𐰆", "𐰉", "𐰒", "𐰤", "𐰞", "𐰱", "𐰾", "𐰋", "𐰑", "𐰚", "𐰃"];
+const RUNES = [
+  "𐰀", "𐰆", "𐰉", "𐰒", "𐰤", "𐰞", "𐰱", "𐰾",
+  "𐰋", "𐰑", "𐰚", "𐰃", "𐰅", "𐰇", "𐰈", "𐰢",
+];
 const RUNE_COLORS = [
   "#e05a3a",
   "#d4af37",
@@ -43,6 +46,10 @@ const RUNE_COLORS = [
   "#2fb98f",
   "#d47a2a",
   "#4a9ee0",
+  "#e0478c",
+  "#8fbf3a",
+  "#3abfd4",
+  "#b08fe0",
 ];
 
 const TILE_W = 58;
@@ -53,14 +60,21 @@ const GAP = 8;
 // böylece her seviye her zaman çözülebilir. Hücre sayısı = rün sayısı * 2.
 const LEVELS: Array<{ name: string; cells: Array<[number, number]>; bg: [string, string] }> =
   [
-    { name: "Başlangıç", cells: rectShape(2, 4), bg: ["#0e2433", "#16384a"] },
+    { name: "Sıra", cells: rowShape(2, 4), bg: ["#0e2433", "#16384a"] },
+    { name: "Dama", cells: checkerShape(4, 4), bg: ["#0c2833", "#17404e"] },
+    { name: "Çapraz", cells: crossShape(4, 4), bg: ["#17243b", "#24365b"] },
+    { name: "U Şekli", cells: uShape(4, 5), bg: ["#273323", "#3a4a2f"] },
     { name: "Çerçeve", cells: frameShape(4, 4), bg: ["#14233d", "#20314f"] },
-    { name: "Kare", cells: rectShape(4, 4), bg: ["#0d2e33", "#1a4650"] },
-    { name: "Geniş Alan", cells: rectShape(5, 4), bg: ["#271f3f", "#3a2a53"] },
-    { name: "Zirve", cells: rectShape(6, 4), bg: ["#3a1f2b", "#542d3d"] },
+    { name: "Sütun", cells: rowShape(3, 4), bg: ["#33233c", "#4a2f56"] },
+    { name: "Kare", cells: rowShape(4, 4), bg: ["#0d2e33", "#1a4650"] },
+    { name: "Piramit", cells: pyramidShape(8), bg: ["#3a2a16", "#544026"] },
+    { name: "Geniş Alan", cells: rowShape(5, 4), bg: ["#271f3f", "#3a2a53"] },
+    { name: "Halka", cells: ringShape(5, 5), bg: ["#1f3a33", "#2c5448"] },
+    { name: "Geniş Alan 2", cells: rowShape(7, 4), bg: ["#3a2030", "#542d45"] },
+    { name: "Büyük Kare", cells: rowShape(8, 4), bg: ["#2a1f3f", "#3d2a5c"] },
   ];
 
-function rectShape(cols: number, rows: number): Array<[number, number]> {
+function rowShape(cols: number, rows: number): Array<[number, number]> {
   const out: Array<[number, number]> = [];
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) out.push([c, r]);
   return out;
@@ -71,6 +85,48 @@ function frameShape(cols: number, rows: number): Array<[number, number]> {
     for (let c = 0; c < cols; c++)
       if (r === 0 || r === rows - 1 || c === 0 || c === cols - 1) out.push([c, r]);
   return out;
+}
+function checkerShape(cols: number, rows: number): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++) if ((r + c) % 2 === 0) out.push([c, r]);
+  return out;
+}
+function crossShape(cols: number, rows: number): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      if (c === r || c + r === cols - 1) out.push([c, r]);
+  return out;
+}
+function uShape(cols: number, rows: number): Array<[number, number]> {
+  // Üst kenar açık, alt kenar ve yanlar dolu (U harfi).
+  const out: Array<[number, number]> = [];
+  for (let r = 1; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      if (r === rows - 1 || c === 0 || c === cols - 1) out.push([c, r]);
+  return out;
+}
+function pyramidShape(maxCols: number): Array<[number, number]> {
+  // Basamaklı ters piramit: her satırda 2,4,6,8... merkezli hücre.
+  const out: Array<[number, number]> = [];
+  let cols = 2;
+  let row = 0;
+  while (cols <= maxCols) {
+    const start = (maxCols - cols) / 2;
+    for (let c = 0; c < cols; c++) out.push([start + c, row]);
+    cols += 2;
+    row++;
+  }
+  return out;
+}
+function ringShape(cols: number, rows: number): Array<[number, number]> {
+  // Kalın halka: dış çerçeve + iç çerçeve.
+  const outer = frameShape(cols, rows);
+  const inner = frameShape(cols - 2, rows - 2).map(
+    ([c, r]): [number, number] => [c + 1, r + 1],
+  );
+  return [...outer, ...inner];
 }
 
 export class Game {
@@ -171,13 +227,21 @@ export class Game {
   private layoutCols = 4;
   private layoutRows = 4;
 
+  /** Sağ panelin sol kenarına göre, tahtanın ortalanacağı x merkezi. */
+  private boardOriginX(): number {
+    const panelLeft = 900;
+    const usableW = panelLeft - 40;
+    return usableW / 2;
+  }
+
   private makeTile(symbol: number, col: number, row: number, layer: number): Tile {
     // Üst katman aynı hücrenin üzerine hafifçe kayarak biner (mahjong hissi).
     const ox = layer * 12;
     const oy = layer * -14;
     const boardW = this.layoutCols * (TILE_W + GAP);
     const boardH = this.layoutRows * (TILE_H + GAP);
-    const sx0 = (CANVAS_W - boardW) / 2;
+    // Sağ panel (x=900+) hariç kullanılabilir bölgenin merkezine hizala.
+    const sx0 = this.boardOriginX() - boardW / 2;
     const sy0 = (CANVAS_H - boardH) / 2 + 30;
     const sx = sx0 + col * (TILE_W + GAP) + ox;
     const sy = sy0 + row * (TILE_H + GAP) + oy;
@@ -217,6 +281,10 @@ export class Game {
 
   getLevelIndex(): number {
     return this.levelIndex;
+  }
+
+  getLevelCount(): number {
+    return LEVELS.length;
   }
 
   undo(): void {
@@ -364,7 +432,7 @@ export class Game {
     // Yerleşimin çerçevesi (taş alanına göre).
     const boxW = this.layoutCols * (TILE_W + GAP) + GAP;
     const boxH = this.layoutRows * (TILE_H + GAP) + GAP;
-    const bx = (CANVAS_W - boxW) / 2;
+    const bx = this.boardOriginX() - boxW / 2;
     const by = (CANVAS_H - boxH) / 2 + 30;
     c.strokeStyle = "rgba(255,255,255,0.08)";
     c.lineWidth = 2;
