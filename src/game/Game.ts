@@ -1,11 +1,11 @@
-﻿// GÃ¶ktÃ¼rk Mahjong Solitaire
-// Kurallar: aynÄ± GÃ¶ktÃ¼rk rÃ¼nÃ¼ne sahip iki AÃ‡IK taÅŸÄ± seÃ§ip eÅŸleÅŸtir, kaldÄ±r.
-// TÃ¼m taÅŸlar kalkÄ±nca oyunu kazanÄ±rsÄ±n.
+// Göktürk Mahjong Solitaire
+// Kurallar: aynı Göktürk rününe sahip iki AÇIK taşı seçip eşleştir, kaldır.
+// Tüm taşlar kalkınca oyunu kazanırsın.
 
 const CANVAS_W = 1280;
 const CANVAS_H = 720;
 
-// Bir hex rengini belirli oranda aÃ§Ä±k (+) ya da koyu (-) yapar.
+// Bir hex rengini belirli oranda açık (+) ya da koyu (-) yapar.
 function shade(hex: string, percent: number): string {
   const f = parseInt(hex.slice(1), 16);
   const R = (f >> 16) & 255;
@@ -21,9 +21,9 @@ function shade(hex: string, percent: number): string {
 
 export interface Tile {
   id: number;
-  symbol: number; // rÃ¼n indeksi
-  x: number; // hÃ¼cre sÃ¼tunu
-  y: number; // hÃ¼cre satÄ±rÄ±
+  symbol: number; // rün indeksi
+  x: number; // hücre sütunu
+  y: number; // hücre satırı
   layer: number;
   removed: boolean;
   sx: number; // ekran x merkez
@@ -42,13 +42,13 @@ export interface HudState {
   levelName: string;
 }
 
-// GÃ¶ktÃ¼rk rÃ¼nleri (Orhun alfabesi). Her biri bir "aile" = 4 taÅŸ.
+// Göktürk rünleri (Orhun alfabesi). Her biri bir "aile" = 4 taş.
 const RUNES = [
-  "ğ°€", "ğ°†", "ğ°‰", "ğ°’", "ğ°¤", "ğ°", "ğ°±", "ğ°¾",
-  "ğ°‹", "ğ°‘", "ğ°š", "ğ°ƒ", "ğ°…", "ğ°‡", "ğ°ˆ", "ğ°¢",
+  "𐰀", "𐰆", "𐰉", "𐰒", "𐰤", "𐰞", "𐰱", "𐰾",
+  "𐰋", "𐰑", "𐰚", "𐰃", "𐰅", "𐰇", "𐰈", "𐰢",
 ];
 
-// Her rÃ¼n sembolÃ¼ne Ã¶zel renk (aÃ§Ä±k taÅŸ Ã¼zerinde okunaklÄ±, doygun tonlar).
+// Her rün sembolüne özel renk (açık taş üzerinde okunaklı, doygun tonlar).
 const RUNE_COLORS = [
   "#c0392b", "#e07b39", "#2e86c1", "#27ae60", "#8e44ad", "#d35400", "#16a085", "#7d3c98",
   "#c1286f", "#6c8e23", "#e8432f", "#0e7ac7", "#9b5de5", "#f1a208", "#0ca3b2", "#7d4fd6",
@@ -57,22 +57,22 @@ const TILE_W = 58;
 const TILE_H = 94;
 const GAP = 14;
 
-// Seviye dizimleri. Her hÃ¼cre 2 katman taÅŸ (Ã¼st aÃ§Ä±k, alt kapalÄ±) alÄ±r,
-// bÃ¶ylece her seviye her zaman Ã§Ã¶zÃ¼lebilir. HÃ¼cre sayÄ±sÄ± = rÃ¼n sayÄ±sÄ± * 2.
+// Seviye dizimleri. Her hücre 2 katman taş (üst açık, alt kapalı) alır,
+// böylece her seviye her zaman çözülebilir. Hücre sayısı = rün sayısı * 2.
 const LEVELS: Array<{ name: string; cells: Array<[number, number]>; bg: [string, string] }> =
   [
-    { name: "SÄ±ra", cells: rowShape(2, 4), bg: ["#0e2433", "#16384a"] },
+    { name: "Sıra", cells: rowShape(2, 4), bg: ["#0e2433", "#16384a"] },
     { name: "Dama", cells: checkerShape(4, 4), bg: ["#0c2833", "#17404e"] },
-    { name: "Ã‡apraz", cells: crossShape(4, 4), bg: ["#17243b", "#24365b"] },
-    { name: "U Åekli", cells: uShape(4, 5), bg: ["#273323", "#3a4a2f"] },
-    { name: "Ã‡erÃ§eve", cells: frameShape(4, 4), bg: ["#14233d", "#20314f"] },
-    { name: "SÃ¼tun", cells: rowShape(3, 4), bg: ["#33233c", "#4a2f56"] },
+    { name: "Çapraz", cells: crossShape(4, 4), bg: ["#17243b", "#24365b"] },
+    { name: "U Şekli", cells: uShape(4, 5), bg: ["#273323", "#3a4a2f"] },
+    { name: "Çerçeve", cells: frameShape(4, 4), bg: ["#14233d", "#20314f"] },
+    { name: "Sütun", cells: rowShape(3, 4), bg: ["#33233c", "#4a2f56"] },
     { name: "Kare", cells: rowShape(4, 4), bg: ["#0d2e33", "#1a4650"] },
     { name: "Piramit", cells: pyramidShape(8), bg: ["#3a2a16", "#544026"] },
-    { name: "GeniÅŸ Alan", cells: rowShape(5, 4), bg: ["#271f3f", "#3a2a53"] },
+    { name: "Geniş Alan", cells: rowShape(5, 4), bg: ["#271f3f", "#3a2a53"] },
     { name: "Halka", cells: ringShape(5, 5), bg: ["#1f3a33", "#2c5448"] },
-    { name: "GeniÅŸ Alan 2", cells: rowShape(7, 4), bg: ["#3a2030", "#542d45"] },
-    { name: "BÃ¼yÃ¼k Kare", cells: rowShape(8, 4), bg: ["#2a1f3f", "#3d2a5c"] },
+    { name: "Geniş Alan 2", cells: rowShape(7, 4), bg: ["#3a2030", "#542d45"] },
+    { name: "Büyük Kare", cells: rowShape(8, 4), bg: ["#2a1f3f", "#3d2a5c"] },
   ];
 
 function rowShape(cols: number, rows: number): Array<[number, number]> {
@@ -101,7 +101,7 @@ function crossShape(cols: number, rows: number): Array<[number, number]> {
   return out;
 }
 function uShape(cols: number, rows: number): Array<[number, number]> {
-  // Ãœst kenar aÃ§Ä±k, alt kenar ve yanlar dolu (U harfi).
+  // Üst kenar açık, alt kenar ve yanlar dolu (U harfi).
   const out: Array<[number, number]> = [];
   for (let r = 1; r < rows; r++)
     for (let c = 0; c < cols; c++)
@@ -109,7 +109,7 @@ function uShape(cols: number, rows: number): Array<[number, number]> {
   return out;
 }
 function pyramidShape(maxCols: number): Array<[number, number]> {
-  // BasamaklÄ± ters piramit: her satÄ±rda 2,4,6,8... merkezli hÃ¼cre.
+  // Basamaklı ters piramit: her satırda 2,4,6,8... merkezli hücre.
   const out: Array<[number, number]> = [];
   let cols = 2;
   let row = 0;
@@ -122,7 +122,7 @@ function pyramidShape(maxCols: number): Array<[number, number]> {
   return out;
 }
 function ringShape(cols: number, rows: number): Array<[number, number]> {
-  // KalÄ±n halka: dÄ±ÅŸ Ã§erÃ§eve + iÃ§ Ã§erÃ§eve.
+  // Kalın halka: dış çerçeve + iç çerçeve.
   const outer = frameShape(cols, rows);
   const inner = frameShape(cols - 2, rows - 2).map(
     ([c, r]): [number, number] => [c + 1, r + 1],
@@ -130,8 +130,8 @@ function ringShape(cols: number, rows: number): Array<[number, number]> {
   return [...outer, ...inner];
 }
 
-// Deterministik (seeded) rastgele sayÄ± Ã¼retici: aynÄ± seviye her zaman
-// aynÄ± dizim Ã¼retir, bÃ¶ylece "yeniden oyna" seviyeyi deÄŸiÅŸtirmez.
+// Deterministik (seeded) rastgele sayı üretici: aynı seviye her zaman
+// aynı dizim üretir, böylece "yeniden oyna" seviyeyi değiştirmez.
 function mulberry32(seed: number): () => number {
   let s = seed >>> 0;
   return function () {
@@ -143,17 +143,17 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-// Seviye ilerledikÃ§e rastgele yeni bir dizim Ã¼retir: birkaÃ§ bitiÅŸik blok
-// (adacÄ±k) rastgele yerleÅŸtirilir. Her bloÄŸun hÃ¼cre sayÄ±sÄ± Ã§ifttir (2x2, 2x3,
-// 3x2, 3x3), toplam Ã§ift sayÄ±ya yuvarlanÄ±r, bÃ¶ylece her dizim Ã§Ã¶zÃ¼lebilir ve
-// rÃ¼n havuzunu (16 rÃ¼n = 32 hÃ¼cre) aÅŸmaz. Deterministik (seeded): aynÄ± seviye
-// her zaman aynÄ± dizimi Ã¼retir.
+// Seviye ilerledikçe rastgele yeni bir dizim üretir: birkaç bitişik blok
+// (adacık) rastgele yerleştirilir. Her bloğun hücre sayısı çifttir (2x2, 2x3,
+// 3x2, 3x3), toplam çift sayıya yuvarlanır, böylece her dizim çözülebilir ve
+// rün havuzunu (16 rün = 32 hücre) aşmaz. Deterministik (seeded): aynı seviye
+// her zaman aynı dizimi üretir.
 function randomShape(levelIndex: number): Array<[number, number]> {
   const rng = mulberry32(levelIndex * 104729 + 13);
   const cols = 8;
   const rows = 5;
   const grid = new Set<string>();
-  const blocks = 2 + Math.floor(rng() * 2); // 2..3 blok (max 27 hÃ¼cre <= 32)
+  const blocks = 2 + Math.floor(rng() * 2); // 2..3 blok (max 27 hücre <= 32)
   const sizes: Array<[number, number]> = [
     [2, 2],
     [2, 3],
@@ -171,7 +171,7 @@ function randomShape(levelIndex: number): Array<[number, number]> {
     const p = s.split(",").map(Number);
     return [p[0], p[1]] as [number, number];
   });
-  // Ã‡ift hÃ¼cre garantisi (Ã§Ã¶zÃ¼lebilirlik).
+  // Çift hücre garantisi (çözülebilirlik).
   if (cells.length % 2 !== 0) cells.pop();
   return cells;
 }
@@ -202,7 +202,7 @@ export class Game {
   private won = false;
   private history: Array<{ a: number; b: number }> = [];
   private levelIndex = 0;
-  private tray: number[] = []; // hazneye dÃ¼ÅŸen eÅŸlenen rÃ¼nler (max 4)
+  private tray: number[] = []; // hazneye düşen eşlenen rünler (max 4)
   private shards: Array<{
     x: number;
     y: number;
@@ -245,7 +245,7 @@ export class Game {
     this.canvas.removeEventListener("pointerdown", this.onDown);
   }
   private onMove = (_e: PointerEvent): void => {
-    // Hover vurgusu ÅŸu anlÄ±k kullanÄ±lmÄ±yor.
+    // Hover vurgusu şu anlık kullanılmıyor.
   };
   private onDown = (e: PointerEvent): void => {
     const r = this.canvas.getBoundingClientRect();
@@ -254,21 +254,21 @@ export class Game {
     this.click(x, y);
   };
 
-  // ---- YerleÅŸim ----
+  // ---- Yerleşim ----
   private level(): { name: string; cells: Array<[number, number]>; bg: [string, string] } {
     if (this.levelIndex < LEVELS.length) {
       return LEVELS[this.levelIndex];
     }
-    // Elle tanÄ±mlÄ± seviyeler bittikten sonra rastgele (deterministik) dizim.
+    // Elle tanımlı seviyeler bittikten sonra rastgele (deterministik) dizim.
     const cells = randomShape(this.levelIndex);
     const bg = RANDOM_BG[this.levelIndex % RANDOM_BG.length];
     return { name: `Rastgele #${this.levelIndex + 1}`, cells, bg };
   }
 
   private buildLayout(): void {
-    // Seviyenin dizimindeki her hÃ¼cre 2 katman taÅŸ alÄ±r (alt + Ã¼st).
-    // Ãœst katmandaki tÃ¼m taÅŸlar aÃ§Ä±ktÄ±r ve Ã§iftler halinde eÅŸleÅŸtirilebilir;
-    // kalkÄ±nca alttakiler aÃ§Ä±lÄ±r -> her seviye her zaman Ã§Ã¶zÃ¼lebilir.
+    // Seviyenin dizimindeki her hücre 2 katman taş alır (alt + üst).
+    // Üst katmandaki tüm taşlar açıktır ve çiftler halinde eşleştirilebilir;
+    // kalkınca alttakiler açılır -> her seviye her zaman çözülebilir.
     const def = this.level();
     const cells = def.cells;
     const runes = cells.length / 2;
@@ -304,7 +304,7 @@ export class Game {
   private layoutCols = 4;
   private layoutRows = 4;
 
-  /** SaÄŸ panelin sol kenarÄ±na gÃ¶re, tahtanÄ±n ortalanacaÄŸÄ± x merkezi. */
+  /** Sağ panelin sol kenarına göre, tahtanın ortalanacağı x merkezi. */
   private boardOriginX(): number {
     const panelLeft = 900;
     const usableW = panelLeft - 40;
@@ -312,12 +312,12 @@ export class Game {
   }
 
   private makeTile(symbol: number, col: number, row: number, layer: number): Tile {
-    // Ãœst katman aynÄ± hÃ¼crenin Ã¼zerine hafifÃ§e kayarak biner (mahjong hissi).
+    // Üst katman aynı hücrenin üzerine hafifçe kayarak biner (mahjong hissi).
     const ox = layer * 12;
     const oy = layer * -14;
     const boardW = this.layoutCols * (TILE_W + GAP);
     const boardH = this.layoutRows * (TILE_H + GAP);
-    // SaÄŸ panel (x=900+) hariÃ§ kullanÄ±labilir bÃ¶lgenin merkezine hizala.
+    // Sağ panel (x=900+) hariç kullanılabilir bölgenin merkezine hizala.
     const sx0 = this.boardOriginX() - boardW / 2;
     const sy0 = (CANVAS_H - boardH) / 2 + 30;
     const sx = sx0 + col * (TILE_W + GAP) + ox;
@@ -347,8 +347,8 @@ export class Game {
     this.emitHud();
   }
 
-  /** Bir sonraki seviyeye geÃ§er; elle tanÄ±mlÄ±lar bittikten sonra rastgele
-   *  seviyeler baÅŸlar ve 1000+ farklÄ± dizime kadar ilerlenebilir. */
+  /** Bir sonraki seviyeye geçer; elle tanımlılar bittikten sonra rastgele
+   *  seviyeler başlar ve 1000+ farklı dizime kadar ilerlenebilir. */
   nextLevel(): void {
     this.levelIndex++;
     this.newGame();
@@ -379,7 +379,7 @@ export class Game {
     this.emitHud();
   }
 
-  // ---- MantÄ±k ----
+  // ---- Mantık ----
   private topAt(col: number, row: number): Tile | null {
     let top: Tile | null = null;
     for (const t of this.tiles) {
@@ -391,7 +391,7 @@ export class Game {
     return top;
   }
 
-  /** TaÅŸ aÃ§Ä±k mÄ±? ÃœstÃ¼nde taÅŸ yok (aynÄ± x,y Ã¼stte). */
+  /** Taş açık mı? Üstünde taş yok (aynı x,y üstte). */
   private isOpen(t: Tile): boolean {
     if (t.removed) return false;
     const top = this.topAt(t.x, t.y);
@@ -400,7 +400,7 @@ export class Game {
 
   private click(x: number, y: number): void {
     if (this.won) return;
-    // En Ã¼stteki tÄ±klanan aÃ§Ä±k taÅŸ.
+    // En üstteki tıklanan açık taş.
     let target: Tile | null = null;
     for (const t of this.tiles) {
       if (!this.isOpen(t)) continue;
@@ -429,14 +429,14 @@ export class Game {
       return;
     }
     if (selected.symbol === target.symbol) {
-      // EÅŸleÅŸti -> kaldÄ±r, hazneye dÃ¼ÅŸÃ¼r.
+      // Eşleşti -> kaldır, hazneye düşür.
       selected.removed = true;
       target.removed = true;
       this.history.push({ a: selected.id, b: target.id });
       this.tray.push(selected.symbol, target.symbol);
       this.moves++;
       this.selectedId = null;
-      // Hazne tamamen doldu (4 taÅŸ = 2 eÅŸleÅŸme) -> kÄ±r.
+      // Hazne tamamen doldu (4 taş = 2 eşleşme) -> kır.
       if (this.tray.length >= 4) {
         this.breakTray();
       }
@@ -446,7 +446,7 @@ export class Game {
       }
       this.emitHud();
     } else {
-      // EÅŸleÅŸmedi -> yeni seÃ§im.
+      // Eşleşmedi -> yeni seçim.
       this.selectedId = target.id;
       this.emitHud();
     }
@@ -463,10 +463,10 @@ export class Game {
   private update(dt: number): void {
     if (this.won) return;
     this.seconds += dt;
-    // KÄ±rÄ±lma parÃ§alarÄ±nÄ± gÃ¼ncelle.
+    // Kırılma parçalarını güncelle.
     for (const s of this.shards) {
       s.life -= dt;
-      s.vy += 900 * dt; // yerÃ§ekimi
+      s.vy += 900 * dt; // yerçekimi
       s.x += s.vx * dt;
       s.y += s.vy * dt;
       if (s.y > CANVAS_H - 30) {
@@ -478,7 +478,7 @@ export class Game {
     this.shards = this.shards.filter((s) => s.life > 0);
   }
 
-  /** Haznedeki 4 taÅŸÄ± parÃ§alara ayÄ±rÄ±p patlatÄ±r ve hazneyi boÅŸaltÄ±r. */
+  /** Haznedeki 4 taşı parçalara ayırıp patlatır ve hazneyi boşaltır. */
   private breakTray(): void {
     const color = RUNE_COLORS;
     for (let i = 0; i < this.tray.length; i++) {
@@ -506,7 +506,7 @@ export class Game {
     const remaining = this.tiles.filter((t) => !t.removed).length;
     let stuck = false;
     if (remaining > 0) {
-      // Ã‡Ã¶zÃ¼lebilir mi? (basit: aÃ§Ä±k eÅŸleÅŸme var mÄ±)
+      // Çözülebilir mi? (basit: açık eşleşme var mı)
       const opens = this.tiles.filter((t) => this.isOpen(t));
       const seen = new Set<number>();
       stuck = true;
@@ -535,23 +535,23 @@ export class Game {
   private render(): void {
     const c = this.ctx;
     const def = this.level();
-    // Arka plan: seviyeye gÃ¶re buz + GÃ¶ktÃ¼rk tonu.
+    // Arka plan: seviyeye göre buz + Göktürk tonu.
     const g = c.createLinearGradient(0, 0, 0, CANVAS_H);
     g.addColorStop(0, def.bg[0]);
     g.addColorStop(1, def.bg[1]);
     c.fillStyle = g;
     c.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // BaÅŸlÄ±k + seviye.
+    // Başlık + seviye.
     c.fillStyle = "#d4e8f2";
     c.textAlign = "left";
     c.font = "bold 36px Georgia";
-    c.fillText("GÃ¶ktÃ¼rk Mahjong", 90, 52);
+    c.fillText("Göktürk Mahjong", 90, 52);
     c.font = "bold 22px Georgia";
     c.fillStyle = "#9fd0e0";
-    c.fillText(`Seviye ${this.levelIndex + 1} Â· ${def.name}`, 90, 84);
+    c.fillText(`Seviye ${this.levelIndex + 1} · ${def.name}`, 90, 84);
 
-    // YerleÅŸimin Ã§erÃ§evesi (taÅŸ alanÄ±na gÃ¶re).
+    // Yerleşimin çerçevesi (taş alanına göre).
     const boxW = this.layoutCols * (TILE_W + GAP) + GAP;
     const boxH = this.layoutRows * (TILE_H + GAP) + GAP;
     const bx = this.boardOriginX() - boxW / 2;
@@ -560,7 +560,7 @@ export class Game {
     c.lineWidth = 2;
     c.strokeRect(bx - 12, by - 12, boxW + 24, boxH + 24);
 
-    // TaÅŸlarÄ± Ã§iz (en Ã¼st katman Ã¶nce deÄŸil, altâ†’Ã¼st sÄ±ralama render etkisi).
+    // Taşları çiz (en üst katman önce değil, alt→üst sıralama render etkisi).
     const sorted = [...this.tiles].sort((a, b) => a.layer - b.layer);
     for (const t of sorted) {
       if (t.removed) continue;
@@ -569,7 +569,7 @@ export class Game {
       this.drawTile(c, t, open, sel);
     }
 
-    // ---- Kırılma parçacıkları (taşların üstünde çizilir) ----
+    // ---- Kirilma parcaciklari (taslarin ustunde cizilir) ----
     for (const s of this.shards) {
       const a = Math.max(0, s.life / s.max);
       c.globalAlpha = a;
@@ -583,7 +583,7 @@ export class Game {
     }
     c.globalAlpha = 1;
 
-    // ---- Hazne (dört taşlık yuva) ----
+    // ---- Hazne (dort taslik yuva) ----
     const trayY = CANVAS_H - 34;
     const trayCx = CANVAS_W / 2;
     const slotW = 72;
@@ -617,7 +617,9 @@ export class Game {
       }
     }
     c.textBaseline = "alphabetic";
-    // Kenar paneli (saÄŸda): istatistik.
+
+
+    // Kenar paneli (sağda): istatistik.
     const remaining = this.tiles.filter((t) => !t.removed).length;
     const total = this.tiles.length;
     c.fillStyle = "#d4e8f2";
@@ -625,14 +627,14 @@ export class Game {
     c.textAlign = "left";
     c.fillText(`Kalan: ${remaining} / ${total}`, 900, 180);
     c.fillText(`Hamle: ${this.moves}`, 900, 215);
-    c.fillText(`SÃ¼re: ${Math.floor(this.seconds)} sn`, 900, 250);
+    c.fillText(`Süre: ${Math.floor(this.seconds)} sn`, 900, 250);
 
     c.fillStyle = "#7f96b8";
     c.font = "15px Georgia";
-    c.fillText("Ä°pucu: AynÄ± rÃ¼nde", 900, 310);
-    c.fillText("iki AÃ‡IK taÅŸ seÃ§,", 900, 332);
-    c.fillText("kaldÄ±r. ÃœstÃ¼ aÃ§Ä±k", 900, 354);
-    c.fillText("taÅŸlar seÃ§ilebilir.", 900, 376);
+    c.fillText("İpucu: Aynı ründe", 900, 310);
+    c.fillText("iki AÇIK taş seç,", 900, 332);
+    c.fillText("kaldır. Üstü açık", 900, 354);
+    c.fillText("taşlar seçilebilir.", 900, 376);
     c.fillText("[Yeni Oyun] Klavye: N", 900, 420);
     c.fillText("[Geri Al] Klavye: U", 900, 444);
     c.fillText("[Sonraki] Klavye: L", 900, 468);
@@ -649,20 +651,20 @@ export class Game {
     const x = t.sx - w / 2;
     const yTop = t.sy - h / 2;
 
-    // ---- Renkler: 2D tek renk taÅŸ (aÃ§Ä±k = fildiÅŸi, kapalÄ± = koyu) ----
+    // ---- Renkler: 2D tek renk taş (açık = fildişi, kapalı = koyu) ----
     const face = open ? "#f3ead6" : "#3d434b";
     const faceTop = open ? shade(face, 9) : shade(face, 9);
     const faceBot = open ? shade(face, -9) : shade(face, -5);
     const inner = open ? shade(face, -17) : shade(face, 16);
     const rim = open ? shade(face, -27) : shade(face, -22);
 
-    // ---- 2D gÃ¶lge (saÄŸ-alt offset) ----
+    // ---- 2D gölge (sağ-alt offset) ----
     c.fillStyle = "rgba(0,0,0,0.25)";
     c.beginPath();
     c.roundRect(x + 4, yTop + 5, w, h, 9);
     c.fill();
 
-    // ---- GÃ¶vde (hafif dikey Ä±ÅŸÄ±k) ----
+    // ---- Gövde (hafif dikey ışık) ----
     const bg = c.createLinearGradient(0, yTop, 0, yTop + h);
     bg.addColorStop(0, faceTop);
     bg.addColorStop(1, faceBot);
@@ -671,7 +673,7 @@ export class Game {
     c.roundRect(x, yTop, w, h, 9);
     c.fill();
 
-    // ---- KapalÄ± taÅŸ: dokuma desen; AÃ§Ä±k taÅŸ: iÃ§ madalyon ----
+    // ---- Kapalı taş: dokuma desen; Açık taş: iç madalyon ----
     if (open) {
       c.fillStyle = inner;
       c.beginPath();
@@ -697,14 +699,14 @@ export class Game {
       c.restore();
     }
 
-    // ---- Kenar Ã§izgisi ----
+    // ---- Kenar çizgisi ----
     c.strokeStyle = selected ? "#ffb020" : rim;
     c.lineWidth = selected ? 3.5 : 1.8;
     c.beginPath();
     c.roundRect(x, yTop, w, h, 9);
     c.stroke();
 
-    // ---- Renkli rÃ¼n ----
+    // ---- Renkli rün ----
     c.font =
       (open ? "bold 36px " : "bold 26px ") +
       "'Segoe UI Historic','Noto Sans Old Turkic',serif";
@@ -722,7 +724,7 @@ export class Game {
       c.globalAlpha = 1;
     }
 
-    // ---- SeÃ§ili vurgusu ----
+    // ---- Seçili vurgusu ----
     if (selected) {
       c.strokeStyle = "rgba(255,176,32,0.55)";
       c.lineWidth = 2.5;
