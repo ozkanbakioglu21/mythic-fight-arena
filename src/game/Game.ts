@@ -54,7 +54,7 @@ const RUNE_COLORS = [
   "#c1286f", "#6c8e23", "#e8432f", "#0e7ac7", "#9b5de5", "#f1a208", "#0ca3b2", "#7d4fd6",
 ];
 const TILE_W = 58;
-const TILE_H = 94;
+const TILE_H = 78;
 const GAP = 14;
 
 // Seviye dizimleri. Her hücre 2 katman taş (üst açık, alt kapalı) alır,
@@ -1132,12 +1132,12 @@ export class Game {
     const R = 9;
 
     // ---- Renk paleti (acik = fildisi, kapali = koyu duman) ----
-    const face = open ? "#f6efdf" : "#3d434b";
-    const faceTop = open ? "#fffdf5" : shade(face, 13);
-    const faceBot = open ? "#e5d8bb" : shade(face, -7);
-    const innerTop = open ? "#fcf5e5" : shade(face, 5);
-    const innerBot = open ? "#e0d2b0" : shade(face, -12);
-    const rim = open ? "#c9bda6" : "#50575f";
+    const face = open ? "#f2e3c0" : "#1f4a37";
+    const faceTop = open ? "#fdf3da" : shade(face, 16);
+    const faceBot = open ? "#e2cb99" : shade(face, -9);
+    const innerTop = open ? "#f8ecd0" : shade(face, 8);
+    const innerBot = open ? "#d9c08d" : shade(face, -13);
+    const rim = open ? "#c3a86c" : "#2f5f48";
 
     // ---- Dis golge (sag-alt) ----
     c.fillStyle = "rgba(10,15,20,0.30)";
@@ -1223,8 +1223,8 @@ export class Game {
     c.textAlign = "center";
     c.textBaseline = "middle";
     if (open && canTake) {
-      c.fillStyle = "rgba(0,0,0,0.35)";
-      c.fillText(RUNES[t.symbol], t.sx + 1.5, t.sy + 3);
+      c.fillStyle = "rgba(0,0,0,0.5)";
+      c.fillText(RUNES[t.symbol], t.sx + 2, t.sy + 3);
       const glow = c.createRadialGradient(t.sx, t.sy, 2, t.sx, t.sy, 30);
       glow.addColorStop(0, RUNE_COLORS[t.symbol]);
       glow.addColorStop(1, "transparent");
