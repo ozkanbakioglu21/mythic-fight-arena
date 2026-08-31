@@ -441,6 +441,13 @@ export class Game {
     return top === t;
   }
 
+  /** İki yanı (sol ve sağ yatay komşusu) da boş mu? */
+  private sideFree(t: Tile): boolean {
+    const occupied = (x: number, y: number) =>
+      this.tiles.some((o) => !o.removed && o.x === x && o.y === y);
+    return !occupied(t.x - 1, t.y) && !occupied(t.x + 1, t.y);
+  }
+
   private retryHit(x: number, y: number): boolean {
     const bcx = CANVAS_W / 2, bcy = 440;
     return x >= bcx - 105 && x <= bcx + 105 && y >= bcy - 29 && y <= bcy + 29;
@@ -455,7 +462,7 @@ export class Game {
     // En üstteki tıklanan açık taş.
     let target: Tile | null = null;
     for (const t of this.tiles) {
-      if (!this.isOpen(t)) continue;
+      if (!this.isOpen(t) || !this.sideFree(t)) continue;
       const halfW = TILE_W / 2;
       const halfH = TILE_H / 2;
       if (
@@ -952,7 +959,7 @@ export class Game {
       if (t.removed) continue;
       const open = this.isOpen(t);
       const sel = t.id === this.selectedId;
-      this.drawTile(c, t, open, sel);
+      this.drawTile(c, t, open, sel, open && this.sideFree(t));
     }
 
     // ---- Eslesme patlamasi (parlak parcaciklar) ----
@@ -1116,6 +1123,7 @@ export class Game {
     t: Tile,
     open: boolean,
     selected: boolean,
+    canTake: boolean,
   ): void {
     const w = TILE_W;
     const h = TILE_H;
@@ -1214,7 +1222,7 @@ export class Game {
       "'Segoe UI Historic','Noto Sans Old Turkic',serif";
     c.textAlign = "center";
     c.textBaseline = "middle";
-    if (open) {
+    if (open && canTake) {
       c.fillStyle = "rgba(0,0,0,0.35)";
       c.fillText(RUNES[t.symbol], t.sx + 1.5, t.sy + 3);
       const glow = c.createRadialGradient(t.sx, t.sy, 2, t.sx, t.sy, 30);
