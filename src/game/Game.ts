@@ -230,7 +230,6 @@ export class Game {
   private seconds = 0;
   private won = false;
   private lost = false;
-  private restartTimer = -1;
   private history: Array<{ a: number; b: number }> = [];
   private levelIndex = 0;
   private tray: Array<{ id: number; symbol: number }> = []; // hazneye düşen eşlenen rünler (max 4)
@@ -378,7 +377,6 @@ export class Game {
     this.seconds = 0;
     this.won = false;
     this.lost = false;
-    this.restartTimer = -1;
     this.history = [];
     this.tray = [];
     this.shards = [];
@@ -437,8 +435,17 @@ export class Game {
     return top === t;
   }
 
+  private retryHit(x: number, y: number): boolean {
+    const bcx = CANVAS_W / 2, bcy = 440;
+    return x >= bcx - 105 && x <= bcx + 105 && y >= bcy - 29 && y <= bcy + 29;
+  }
+
   private click(x: number, y: number): void {
-    if (this.won || this.lost) return;
+    if (this.won) return;
+    if (this.lost) {
+      if (this.retryHit(x, y)) this.newGame();
+      return;
+    }
     // En üstteki tıklanan açık taş.
     let target: Tile | null = null;
     for (const t of this.tiles) {
@@ -472,9 +479,8 @@ export class Game {
     if (pairIdx !== -1) {
       this.breakPair(pairIdx, lastIdx);
     } else if (this.tray.length >= 4) {
-      // Hazne doldu: oyuncu kaybeder, kisa sure sonra yeniden baslar.
+      // Hazne doldu: oyuncu kaybeder.
       this.lost = true;
-      this.restartTimer = 1.4;
     }
 
     // Kazanma.
@@ -514,12 +520,6 @@ export class Game {
     this.floats = this.floats.filter((f) => f.life > 0);
     for (const pp of this.pops) pp.life -= dt;
     this.pops = this.pops.filter((pp) => pp.life > 0);
-    if (this.lost) {
-      this.restartTimer -= dt;
-      if (this.restartTimer <= 0) {
-        this.newGame();
-      }
-    }
     // Kazaninca kutlama kivilcimlari fiskirir.
     if (this.won) {
       for (let k = 0; k < 2; k++) {
@@ -1071,10 +1071,20 @@ export class Game {
       c.fillText("Kaybettin!", CANVAS_W / 2, 300);
       c.font = "bold 26px Georgia";
       c.fillStyle = "#f2c9c4";
-      c.fillText("Hazne doldu, eslesme kalmadi.", CANVAS_W / 2, 360);
-      c.fillStyle = "#e8a0a0";
-      c.font = "bold 20px Georgia";
-      c.fillText("[Yeniden Oyna] N    [Sonraki Seviye] L", CANVAS_W / 2, 410);
+      c.fillText("Hazne doldu, eslesme kalmadi.", CANVAS_W / 2, 355);
+      const bcx = CANVAS_W / 2, bcy = 440;
+      c.fillStyle = "#7d2a2a";
+      c.beginPath();
+      c.roundRect(bcx - 105, bcy - 29, 210, 58, 16);
+      c.fill();
+      c.strokeStyle = "#ffb27a";
+      c.lineWidth = 2;
+      c.beginPath();
+      c.roundRect(bcx - 105, bcy - 29, 210, 58, 16);
+      c.stroke();
+      c.fillStyle = "#ffe6d5";
+      c.font = "bold 24px Georgia";
+      c.fillText("Yeniden Oyna", bcx, bcy);
     }
 
     // ---- Kazanma ekrani ----
