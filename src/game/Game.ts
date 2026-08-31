@@ -148,8 +148,8 @@ function mulberry32(seed: number): () => number {
 // 3x2, 3x3), toplam çift sayıya yuvarlanır, böylece her dizim çözülebilir ve
 // rün havuzunu (16 rün = 32 hücre) aşmaz. Deterministik (seeded): aynı seviye
 // her zaman aynı dizimi üretir.
-function randomShape(levelIndex: number): Array<[number, number]> {
-  const rng = mulberry32(levelIndex * 104729 + 13);
+function randomShape(levelIndex: number, seedOffset = 0): Array<[number, number]> {
+  const rng = mulberry32(levelIndex * 104729 + 13 + seedOffset);
   const cols = 12;
   const rows = 6;
   const MAX_CELLS = 32;
@@ -230,6 +230,7 @@ export class Game {
   private seconds = 0;
   private won = false;
   private lost = false;
+  private currentLevel: { name: string; cells: Array<[number, number]>; bg: [string, string] } | null = null;
   private history: Array<{ a: number; b: number }> = [];
   private levelIndex = 0;
   private tray: Array<{ id: number; symbol: number }> = []; // hazneye düşen eşlenen rünler (max 4)
@@ -291,13 +292,17 @@ export class Game {
 
   // ---- Yerleşim ----
   private level(): { name: string; cells: Array<[number, number]>; bg: [string, string] } {
-    if (this.levelIndex < LEVELS.length) {
-      return LEVELS[this.levelIndex];
+    if (!this.currentLevel) {
+      // Her oyunda farkli bir rastgele dizilim + rastgele gecmis/bg.
+      const cells = randomShape(this.levelIndex, Math.floor(Math.random() * 100000) + 1);
+      const bg = RANDOM_BG[this.levelIndex % RANDOM_BG.length];
+      const name =
+        this.levelIndex < LEVELS.length
+          ? LEVELS[this.levelIndex].name
+          : `Rastgele #${this.levelIndex + 1}`;
+      this.currentLevel = { name, cells, bg };
     }
-    // Elle tanımlı seviyeler bittikten sonra rastgele (deterministik) dizim.
-    const cells = randomShape(this.levelIndex);
-    const bg = RANDOM_BG[this.levelIndex % RANDOM_BG.length];
-    return { name: `Rastgele #${this.levelIndex + 1}`, cells, bg };
+    return this.currentLevel;
   }
 
   private buildLayout(): void {
@@ -377,6 +382,7 @@ export class Game {
     this.seconds = 0;
     this.won = false;
     this.lost = false;
+    this.currentLevel = null;
     this.history = [];
     this.tray = [];
     this.shards = [];
