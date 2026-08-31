@@ -2,8 +2,8 @@
 // Kurallar: aynı Göktürk rününe sahip iki AÇIK taşı seçip eşleştir, kaldır.
 // Tüm taşlar kalkınca oyunu kazanırsın.
 
-const CANVAS_W = 1280;
-const CANVAS_H = 720;
+const CANVAS_W = 720;
+const CANVAS_H = 1280;
 
 // Bir hex rengini belirli oranda açık (+) ya da koyu (-) yapar.
 function shade(hex: string, percent: number): string {
@@ -55,9 +55,9 @@ const RUNE_COLORS = [
   "#c1286f", "#6c8e23", "#e8432f", "#0e7ac7", "#9b5de5", "#f1a208", "#0ca3b2", "#7d4fd6",
   "#6f4e37", "#4a148c", "#b0990a", "#0b7285",
 ];
-const TILE_W = 58;
-const TILE_H = 78;
-const GAP = 14;
+const TILE_W = 72;
+const TILE_H = 100;
+const GAP = 10;
 
 // Seviye dizimleri. Her hücre 2 katman taş (üst açık, alt kapalı) alır,
 // böylece her seviye her zaman çözülebilir. Hücre sayısı = rün sayısı * 2.
@@ -152,7 +152,7 @@ function mulberry32(seed: number): () => number {
 // her zaman aynı dizimi üretir.
 function randomShape(levelIndex: number, seedOffset = 0): Array<[number, number]> {
   const rng = mulberry32(levelIndex * 104729 + 13 + seedOffset);
-  const cols = 12;
+  const cols = 8;
   const rows = 6;
   const MAX_CELLS = 40;
   const grid = new Set<string>();
@@ -349,9 +349,7 @@ export class Game {
 
   /** Sağ panelin sol kenarına göre, tahtanın ortalanacağı x merkezi. */
   private boardOriginX(): number {
-    const panelLeft = 900;
-    const usableW = panelLeft - 40;
-    return usableW / 2;
+    return CANVAS_W / 2;
   }
 
   private makeTile(symbol: number, col: number, row: number, layer: number): Tile {
@@ -455,7 +453,7 @@ export class Game {
   }
 
   private retryHit(x: number, y: number): boolean {
-    const bcx = CANVAS_W / 2, bcy = 440;
+    const bcx = CANVAS_W / 2, bcy = CANVAS_H - 380;
     return x >= bcx - 105 && x <= bcx + 105 && y >= bcy - 29 && y <= bcy + 29;
   }
 
@@ -920,14 +918,14 @@ export class Game {
     c.fillRect(0, 0, CANVAS_W, CANVAS_H);
     this.drawMotifs(c);
 
-    // Başlık + seviye.
+    // Başlık + seviye (üstte ortalanmış).
     c.fillStyle = "#d4e8f2";
-    c.textAlign = "left";
-    c.font = "bold 36px Georgia";
-    c.fillText("Ötüken Mahjong", 90, 52);
+    c.textAlign = "center";
+    c.font = "bold 42px Georgia";
+    c.fillText("Ötüken Mahjong", CANVAS_W / 2, 60);
     c.font = "bold 22px Georgia";
     c.fillStyle = "#9fd0e0";
-    c.fillText(`Seviye ${this.levelIndex + 1} · ${def.name}`, 90, 84);
+    c.fillText(`Seviye ${this.levelIndex + 1} · ${def.name}`, CANVAS_W / 2, 92);
 
     // Yerleşimin çerçevesi (taş alanına göre).
     const boxW = this.layoutCols * (TILE_W + GAP) + GAP;
@@ -1060,25 +1058,18 @@ export class Game {
     c.textBaseline = "alphabetic";
 
 
-    // Kenar paneli (sağda): istatistik.
+    // Üst şerit: istatistik (portrede üstte ortalanmış).
     const remaining = this.tiles.filter((t) => !t.removed).length;
     const total = this.tiles.length;
     c.fillStyle = "#d4e8f2";
-    c.font = "18px Georgia";
-    c.textAlign = "left";
-    c.fillText(`Kalan: ${remaining} / ${total}`, 900, 180);
-    c.fillText(`Hamle: ${this.moves}`, 900, 215);
-    c.fillText(`Süre: ${Math.floor(this.seconds)} sn`, 900, 250);
+    c.font = "bold 19px Georgia";
+    c.textAlign = "center";
+    c.fillText(`Kalan: ${remaining}/${total}   Hamle: ${this.moves}   Süre: ${Math.floor(this.seconds)} sn`, CANVAS_W / 2, 128);
 
+    // Alttaki kısayollar (haznenin üstü).
     c.fillStyle = "#7f96b8";
     c.font = "15px Georgia";
-    c.fillText("Açık taşa tıkla,", 900, 310);
-    c.fillText("hazneye düşer. Aynı", 900, 332);
-    c.fillText("rün ikili olunca", 900, 354);
-    c.fillText("kırılır.", 900, 376);
-    c.fillText("[Yeni Oyun] Klavye: N", 900, 420);
-    c.fillText("[Geri Al] Klavye: U", 900, 444);
-    c.fillText("[Sonraki] Klavye: L", 900, 468);
+    c.fillText("[Yeni Oyun] N   [Geri Al] U   [Sonraki] L", CANVAS_W / 2, CANVAS_H - 60);
     // ---- Kayip ekrani ----
     if (this.lost) {
       c.fillStyle = "rgba(30,5,5,0.55)";
@@ -1087,11 +1078,11 @@ export class Game {
       c.textBaseline = "middle";
       c.font = "bold 64px Georgia";
       c.fillStyle = "#ff7a6e";
-      c.fillText("Kaybettin!", CANVAS_W / 2, 300);
+      c.fillText("Kaybettin!", CANVAS_W / 2, CANVAS_H / 2 - 120);
       c.font = "bold 26px Georgia";
       c.fillStyle = "#f2c9c4";
-      c.fillText("Hazne doldu, eslesme kalmadi.", CANVAS_W / 2, 355);
-      const bcx = CANVAS_W / 2, bcy = 440;
+      c.fillText("Hazne doldu, eslesme kalmadi.", CANVAS_W / 2, CANVAS_H / 2 - 65);
+      const bcx = CANVAS_W / 2, bcy = CANVAS_H - 380;
       c.fillStyle = "#7d2a2a";
       c.beginPath();
       c.roundRect(bcx - 105, bcy - 29, 210, 58, 16);
@@ -1114,13 +1105,13 @@ export class Game {
       c.textBaseline = "middle";
       c.font = "bold 64px Georgia";
       c.fillStyle = "#ffe08a";
-      c.fillText("Zafer!", CANVAS_W / 2, 300);
+      c.fillText("Zafer!", CANVAS_W / 2, CANVAS_H / 2 - 120);
       c.font = "bold 26px Georgia";
       c.fillStyle = "#cfe6f2";
-      c.fillText("Tum taslar eslestirildi. Seviye tamamlandi!", CANVAS_W / 2, 360);
+      c.fillText("Tum taslar eslestirildi. Seviye tamamlandi!", CANVAS_W / 2, CANVAS_H / 2 - 60);
       c.fillStyle = "#9fd0e0";
       c.font = "bold 20px Georgia";
-      c.fillText("[Sonraki Seviye] L    [Yeniden Oyna] N", CANVAS_W / 2, 410);
+      c.fillText("[Sonraki Seviye] L    [Yeniden Oyna] N", CANVAS_W / 2, CANVAS_H / 2);
     }
   }
 

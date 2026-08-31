@@ -25,15 +25,16 @@ body,
 
 .arena {
   position: relative;
-  width: min(1320px, 96vw);
-  aspect-ratio: 16 / 9;
-  max-height: 88vh;
-  border-radius: 14px;
+  width: min(440px, 94vw);
+  aspect-ratio: 9 / 16;
+  max-height: 92vh;
+  border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 22px 70px rgba(0, 0, 0, 0.65);
   background: #0e2433;
   cursor: pointer;
   user-select: none;
+  touch-action: manipulation;
 }
 
 .arena-canvas {
@@ -69,13 +70,18 @@ body,
 
 .toolbar {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  max-width: 94vw;
 }
 
 .level-picker {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .lvl {
@@ -122,4 +128,32 @@ body,
 }
 .tbtn:hover {
   background: #274c5f;
+}
+
+/* ---- Mobil / dokunmatik ----
+   Tuvali ekrana yaklaştır, butonları kompaktlaştır. */
+@media (max-width: 560px) {
+  .game-shell {
+    padding: 8px 4px;
+    gap: 10px;
+    justify-content: flex-start;
+  }
+  .arena {
+    width: min(420px, 98vw);
+    border-radius: 12px;
+  }
+  .btn {
+    font-size: 13px;
+    padding: 9px 14px;
+  }
+  .lvl {
+    min-width: 30px;
+    padding: 8px 0;
+  }
+  .win-title {
+    font-size: 40px;
+  }
+  .win-sub {
+    font-size: 15px;
+  }
 }
