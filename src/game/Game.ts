@@ -443,11 +443,15 @@ export class Game {
     return top === t;
   }
 
-  /** İki yanı (sol ve sağ yatay komşusu) da boş mu? */
+  /** Yanı (sol ve sağ yatay komşusu) en az biri boş mu, ya da
+   *  yandaki taş alt dizide (daha alt katmanda) mı? Yüksekte kalan taş,
+   *  yanındaki taş aynı veya daha üst katmandaysa bloklanır; alt katmandaysa alınabilir. */
   private sideFree(t: Tile): boolean {
-    const occupied = (x: number, y: number) =>
-      this.tiles.some((o) => !o.removed && o.x === x && o.y === y);
-    return !occupied(t.x - 1, t.y) || !occupied(t.x + 1, t.y);
+    const blocking = (x: number) =>
+      this.tiles.some(
+        (o) => !o.removed && o.x === x && o.y === t.y && o.layer >= t.layer,
+      );
+    return !blocking(t.x - 1) || !blocking(t.x + 1);
   }
 
   private retryHit(x: number, y: number): boolean {
