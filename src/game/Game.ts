@@ -321,7 +321,7 @@ export class Game {
     const def = this.level();
     const cells = def.cells;
     let runes = Math.min(RUNES.length, Math.floor(cells.length / 2));
-    if (this.specialArt() !== "none") runes = 8; // özel seviyelerde 8 tür
+    if (this.specialArt() !== "none") runes = 16; // özel seviyelerde 8 ikon + 8 rün
 
     const symbols: number[] = [];
     for (let s = 0; s < runes; s++) {
@@ -1664,9 +1664,9 @@ export class Game {
 
     // ---- Taş yüzü: rün (normal) / mevsim+ağaç (101. seviye) ----
     const art = this.specialArt();
-    if (art === "animals") {
+    if (art === "animals" && t.symbol < 8) {
       this.drawAnimalIcon(c, t, open);
-    } else if (art === "seasonal") {
+    } else if (art === "seasonal" && t.symbol < 8) {
       this.drawSeasonIcon(c, t, open);
     } else {
       c.font =
