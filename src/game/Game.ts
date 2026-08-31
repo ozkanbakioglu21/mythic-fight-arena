@@ -297,11 +297,16 @@ export class Game {
     if (!this.currentLevel) {
       // Her oyunda farkli bir rastgele dizilim + rastgele gecmis/bg.
       const cells = randomShape(this.levelIndex, Math.floor(Math.random() * 100000) + 1);
-      const bg = RANDOM_BG[this.levelIndex % RANDOM_BG.length];
+      const seasonal = this.isSeasonal();
+      const bg = seasonal
+        ? (["#163a26", "#24503a"] as [string, string])
+        : RANDOM_BG[this.levelIndex % RANDOM_BG.length];
       const name =
         this.levelIndex < LEVELS.length
           ? LEVELS[this.levelIndex].name
-          : `Rastgele #${this.levelIndex + 1}`;
+          : seasonal
+            ? "Mevsimler & Ağaçlar"
+            : `Rastgele #${this.levelIndex + 1}`;
       this.currentLevel = { name, cells, bg };
     }
     return this.currentLevel;
@@ -313,7 +318,8 @@ export class Game {
     // kalkınca alttakiler açılır -> her seviye her zaman çözülebilir.
     const def = this.level();
     const cells = def.cells;
-    const runes = Math.min(RUNES.length, Math.floor(cells.length / 2));
+    let runes = Math.min(RUNES.length, Math.floor(cells.length / 2));
+    if (this.isSeasonal()) runes = 8; // 4 mevsim + 4 ağaç
 
     const symbols: number[] = [];
     for (let s = 0; s < runes; s++) {
@@ -1115,6 +1121,173 @@ export class Game {
     }
   }
 
+  private isSeasonal(): boolean {
+    return this.levelIndex === 100;
+  }
+
+  /** 101. seviye (Mevsimler & Ağaçlar) taş yüzü çizimi. t.symbol % 8:
+   *  0 kar · 1 çiçek · 2 güneş · 3 yaprak · 4 çam · 5 yapraklı ağaç ·
+   *  6 meyve ağacı · 7 kiraz çiçeği ağacı. */
+  private drawSeasonIcon(
+    c: CanvasRenderingContext2D,
+    t: Tile,
+    open: boolean,
+  ): void {
+    const cx = t.sx;
+    const cy = t.sy + 6;
+    c.save();
+    c.globalAlpha *= open ? 1 : 0.32;
+    c.strokeStyle = "#3a2a1a";
+    c.lineWidth = 3;
+    c.lineCap = "round";
+    c.lineJoin = "round";
+    switch (t.symbol % 8) {
+      case 0: {
+        // Kar (kış)
+        c.fillStyle = "#eef6ff";
+        c.beginPath();
+        c.moveTo(cx - 20, cy + 16);
+        c.quadraticCurveTo(cx - 14, cy + 2, cx, cy + 8);
+        c.quadraticCurveTo(cx + 14, cy + 16, cx + 20, cy + 16);
+        c.closePath();
+        c.fill();
+        c.strokeStyle = "#bfe0ff";
+        c.lineWidth = 2;
+        for (let i = -1; i <= 1; i++) {
+          c.beginPath();
+          c.moveTo(cx + i * 14, cy - 2);
+          c.lineTo(cx + i * 14, cy - 16);
+          c.lineTo(cx + i * 14 + 5, cy - 11);
+          c.moveTo(cx + i * 14, cy - 9);
+          c.lineTo(cx + i * 14 - 5, cy - 4);
+          c.stroke();
+        }
+        break;
+      }
+      case 1: {
+        // Çiçek (ilkbahar)
+        c.beginPath();
+        c.moveTo(cx, cy + 16);
+        c.lineTo(cx, cy - 4);
+        c.stroke();
+        const petals = ["#e66aa0", "#ffad4d", "#c86ae6", "#7a9cff"];
+        for (let i = 0; i < 4; i++) {
+          c.fillStyle = petals[i];
+          c.beginPath();
+          c.arc(cx + (i - 1.5) * 11, cy - 10, 6, 0, Math.PI * 2);
+          c.fill();
+        }
+        c.fillStyle = "#fff3c4";
+        c.beginPath();
+        c.arc(cx, cy - 10, 3, 0, Math.PI * 2);
+        c.fill();
+        break;
+      }
+      case 2: {
+        // Güneş (yaz)
+        c.fillStyle = "#ffcf33";
+        c.beginPath();
+        c.arc(cx, cy, 12, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = "#ffb020";
+        c.lineWidth = 4;
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2;
+          c.beginPath();
+          c.moveTo(cx + Math.cos(a) * 16, cy + Math.sin(a) * 16);
+          c.lineTo(cx + Math.cos(a) * 24, cy + Math.sin(a) * 24);
+          c.stroke();
+        }
+        break;
+      }
+      case 3: {
+        // Yaprak (sonbahar)
+        const cols = ["#e8a33d", "#d06b2f", "#b8332f"];
+        for (let i = 0; i < 3; i++) {
+          c.fillStyle = cols[i];
+          c.beginPath();
+          c.ellipse(cx - 14 + i * 14, cy + 2 - i * 2, 7, 4.5, -0.5 + i * 0.3, 0, Math.PI * 2);
+          c.fill();
+        }
+        break;
+      }
+      case 4: {
+        // Çam ağacı
+        for (let i = 0; i < 3; i++) {
+          const yy = cy + 16 - i * 9;
+          const w = 22 - i * 6;
+          c.fillStyle = i % 2 ? "#1f7a3c" : "#2fa05a";
+          c.beginPath();
+          c.moveTo(cx, yy - 12);
+          c.lineTo(cx + w, yy + 4);
+          c.lineTo(cx - w, yy + 4);
+          c.closePath();
+          c.fill();
+        }
+        c.fillStyle = "#6b4a2a";
+        c.fillRect(cx - 3, cy + 16, 6, 8);
+        break;
+      }
+      case 5: {
+        // Yapraklı ağaç
+        c.beginPath();
+        c.moveTo(cx, cy + 22);
+        c.lineTo(cx, cy + 4);
+        c.stroke();
+        c.fillStyle = "#2f9e5f";
+        c.beginPath();
+        c.arc(cx, cy - 2, 13, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = "#3cc873";
+        c.beginPath();
+        c.arc(cx - 6, cy - 6, 6, 0, Math.PI * 2);
+        c.fill();
+        break;
+      }
+      case 6: {
+        // Meyve ağacı
+        c.beginPath();
+        c.moveTo(cx, cy + 22);
+        c.lineTo(cx, cy + 6);
+        c.stroke();
+        c.fillStyle = "#2f9e5f";
+        c.beginPath();
+        c.arc(cx, cy, 12, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = "#e23030";
+        for (const [fx, fy] of [[-6, -4], [4, -7], [0, 5], [7, 3]] as Array<[number, number]>) {
+          c.beginPath();
+          c.arc(cx + fx, cy + fy, 3, 0, Math.PI * 2);
+          c.fill();
+        }
+        break;
+      }
+      default: {
+        // Kiraz çiçeği ağacı (7)
+        c.beginPath();
+        c.moveTo(cx, cy + 22);
+        c.lineTo(cx, cy + 6);
+        c.stroke();
+        c.fillStyle = "#f0a0c0";
+        c.beginPath();
+        c.arc(cx, cy - 1, 13, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = "#ffd0e6";
+        c.beginPath();
+        c.arc(cx - 6, cy - 6, 7, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = "#fff";
+        for (const [fx, fy] of [[-4, -4], [4, -6], [1, 3]] as Array<[number, number]>) {
+          c.beginPath();
+          c.arc(cx + fx, cy + fy, 2, 0, Math.PI * 2);
+          c.fill();
+        }
+        break;
+      }
+    }
+    c.restore();
+  }
+
   private drawTile(
     c: CanvasRenderingContext2D,
     t: Tile,
@@ -1213,31 +1386,35 @@ export class Game {
     c.roundRect(x, yTop, w, h, R);
     c.stroke();
 
-    // ---- Run (renkli, golgeli + hafif parlama) ----
-    c.font =
-      (open ? "bold 36px " : "bold 26px ") +
-      "'Segoe UI Historic','Noto Sans Old Turkic',serif";
-    c.textAlign = "center";
-    c.textBaseline = "middle";
-    if (open && canTake) {
-      c.fillStyle = "rgba(0,0,0,0.5)";
-      c.fillText(RUNES[t.symbol], t.sx + 2, t.sy + 3);
-      const glow = c.createRadialGradient(t.sx, t.sy, 2, t.sx, t.sy, 30);
-      glow.addColorStop(0, RUNE_COLORS[t.symbol]);
-      glow.addColorStop(1, "transparent");
-      c.globalAlpha = 0.25;
-      c.fillStyle = glow;
-      c.beginPath();
-      c.arc(t.sx, t.sy, 30, 0, Math.PI * 2);
-      c.fill();
-      c.globalAlpha = 1;
-      c.fillStyle = RUNE_COLORS[t.symbol];
-      c.fillText(RUNES[t.symbol], t.sx, t.sy);
+    // ---- Taş yüzü: rün (normal) / mevsim+ağaç (101. seviye) ----
+    if (this.isSeasonal()) {
+      this.drawSeasonIcon(c, t, open);
     } else {
-      c.globalAlpha = 0.4;
-      c.fillStyle = RUNE_COLORS[t.symbol];
-      c.fillText(RUNES[t.symbol], t.sx, t.sy);
-      c.globalAlpha = 1;
+      c.font =
+        (open ? "bold 36px " : "bold 26px ") +
+        "'Segoe UI Historic','Noto Sans Old Turkic',serif";
+      c.textAlign = "center";
+      c.textBaseline = "middle";
+      if (open && canTake) {
+        c.fillStyle = "rgba(0,0,0,0.5)";
+        c.fillText(RUNES[t.symbol], t.sx + 2, t.sy + 3);
+        const glow = c.createRadialGradient(t.sx, t.sy, 2, t.sx, t.sy, 30);
+        glow.addColorStop(0, RUNE_COLORS[t.symbol]);
+        glow.addColorStop(1, "transparent");
+        c.globalAlpha = 0.25;
+        c.fillStyle = glow;
+        c.beginPath();
+        c.arc(t.sx, t.sy, 30, 0, Math.PI * 2);
+        c.fill();
+        c.globalAlpha = 1;
+        c.fillStyle = RUNE_COLORS[t.symbol];
+        c.fillText(RUNES[t.symbol], t.sx, t.sy);
+      } else {
+        c.globalAlpha = 0.4;
+        c.fillStyle = RUNE_COLORS[t.symbol];
+        c.fillText(RUNES[t.symbol], t.sx, t.sy);
+        c.globalAlpha = 1;
+      }
     }
 
     // ---- Secili vurgusu ----
