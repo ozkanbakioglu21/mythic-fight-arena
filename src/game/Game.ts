@@ -445,7 +445,7 @@ export class Game {
   private sideFree(t: Tile): boolean {
     const occupied = (x: number, y: number) =>
       this.tiles.some((o) => !o.removed && o.x === x && o.y === y);
-    return !occupied(t.x - 1, t.y) && !occupied(t.x + 1, t.y);
+    return !occupied(t.x - 1, t.y) || !occupied(t.x + 1, t.y);
   }
 
   private retryHit(x: number, y: number): boolean {
