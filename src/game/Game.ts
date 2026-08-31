@@ -298,17 +298,14 @@ export class Game {
       // Her oyunda farkli bir rastgele dizilim + rastgele gecmis/bg.
       const cells = randomShape(this.levelIndex, Math.floor(Math.random() * 100000) + 1);
       const special = this.specialArt();
-      const seasonBg = ["#163a26", "#24503a"] as [string, string];
-      const animalBg = ["#2f3b1c", "#4a5b2a"] as [string, string];
-      const bg = special === "animals" ? animalBg : special === "seasonal" ? seasonBg : RANDOM_BG[this.levelIndex % RANDOM_BG.length];
+      const mixedBg = ["#2f3b1c", "#4a5b2a"] as [string, string];
+      const bg = special === "mixed" ? mixedBg : RANDOM_BG[this.levelIndex % RANDOM_BG.length];
       const name =
         this.levelIndex < LEVELS.length
           ? LEVELS[this.levelIndex].name
-          : special === "seasonal"
-            ? "Mevsimler & Ağaçlar"
-            : special === "animals"
-              ? "Hayvanlar"
-              : `Rastgele #${this.levelIndex + 1}`;
+          : special === "mixed"
+            ? "Vahşi Bozkır"
+            : `Rastgele #${this.levelIndex + 1}`;
       this.currentLevel = { name, cells, bg };
     }
     return this.currentLevel;
@@ -321,7 +318,7 @@ export class Game {
     const def = this.level();
     const cells = def.cells;
     let runes = Math.min(RUNES.length, Math.floor(cells.length / 2));
-    if (this.specialArt() !== "none") runes = 16; // özel seviyelerde 8 ikon + 8 rün
+    if (this.specialArt() === "mixed") runes = 20; // 8 mevsim + 8 hayvan + 4 rün
 
     const symbols: number[] = [];
     for (let s = 0; s < runes; s++) {
@@ -1123,10 +1120,8 @@ export class Game {
     }
   }
 
-  private specialArt(): "none" | "seasonal" | "animals" {
-    if (this.levelIndex === 100) return "seasonal";
-    if (this.levelIndex === 200) return "animals";
-    return "none";
+  private specialArt(): "mixed" | "none" {
+    return this.levelIndex >= 100 ? "mixed" : "none";
   }
 
   /** 201. seviye (Hayvanlar) taş yüzü çizimi. t.symbol % 8:
@@ -1664,10 +1659,10 @@ export class Game {
 
     // ---- Taş yüzü: rün (normal) / mevsim+ağaç (101. seviye) ----
     const art = this.specialArt();
-    if (art === "animals" && t.symbol < 8) {
-      this.drawAnimalIcon(c, t, open);
-    } else if (art === "seasonal" && t.symbol < 8) {
+    if (art === "mixed" && t.symbol < 8) {
       this.drawSeasonIcon(c, t, open);
+    } else if (art === "mixed" && t.symbol < 16) {
+      this.drawAnimalIcon(c, t, open);
     } else {
       c.font =
         (open ? "bold 36px " : "bold 26px ") +
