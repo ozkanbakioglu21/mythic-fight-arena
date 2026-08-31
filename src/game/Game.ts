@@ -152,20 +152,28 @@ function randomShape(levelIndex: number): Array<[number, number]> {
   const rng = mulberry32(levelIndex * 104729 + 13);
   const cols = 12;
   const rows = 6;
+  const MAX_CELLS = 32;
   const grid = new Set<string>();
-  const blocks = 3 + (levelIndex % 6); // 2..3 blok (max 27 hücre <= 32)
-  const sizes: Array<[number, number]> = [
-    [2, 2],
-    [2, 3],
-    [3, 2],
-    [3, 3],
+  // Karmaşık taş dizimleri: dikdörtgen, L, T, artı, basamak ve kule şekilleri.
+  const shapes = [
+    { w: 3, h: 3, cells: rect(3, 3) },
+    { w: 2, h: 3, cells: rect(2, 3) },
+    { w: 4, h: 2, cells: rect(4, 2) },
+    { w: 3, h: 3, cells: lShape() },
+    { w: 3, h: 3, cells: tShape() },
+    { w: 3, h: 3, cells: plusShape() },
+    { w: 3, h: 3, cells: stair() },
+    { w: 3, h: 4, cells: tower() },
   ];
-  for (let b = 0; b < blocks; b++) {
-    const [bw, bh] = sizes[Math.floor(rng() * sizes.length)];
-    const cx = Math.floor(rng() * (cols - bw + 1));
-    const cy = Math.floor(rng() * (rows - bh + 1));
-    for (let y = cy; y < cy + bh; y++)
-      for (let x = cx; x < cx + bw; x++) grid.add(`${x},${y}`);
+  const blocks = 3 + (levelIndex % 6);
+  for (let i = 0; i < blocks && grid.size < MAX_CELLS; i++) {
+    const sh = shapes[Math.floor(rng() * shapes.length)];
+    const cx = Math.floor(rng() * (cols - sh.w + 1));
+    const cy = Math.floor(rng() * (rows - sh.h + 1));
+    for (const pt of sh.cells) {
+      grid.add((cx + pt[0]) + "," + (cy + pt[1]));
+      if (grid.size >= MAX_CELLS) break;
+    }
   }
   const cells = [...grid].map((s) => {
     const p = s.split(",").map(Number);
@@ -174,6 +182,27 @@ function randomShape(levelIndex: number): Array<[number, number]> {
   // Çift hücre garantisi (çözülebilirlik).
   if (cells.length % 2 !== 0) cells.pop();
   return cells;
+}
+
+function rect(w: number, h: number): [number, number][] {
+  const out: [number, number][] = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) out.push([x, y]);
+  return out;
+}
+function lShape(): [number, number][] {
+  return [[0, 0], [1, 0], [2, 0], [0, 1], [0, 2]];
+}
+function tShape(): [number, number][] {
+  return [[0, 0], [1, 0], [2, 0], [1, 1], [1, 2]];
+}
+function plusShape(): [number, number][] {
+  return [[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]];
+}
+function stair(): [number, number][] {
+  return [[0, 2], [1, 1], [1, 2], [2, 0], [2, 1], [2, 2]];
+}
+function tower(): [number, number][] {
+  return [[1, 0], [0, 1], [1, 1], [2, 1], [0, 2], [1, 2], [2, 2], [1, 3]];
 }
 
 const RANDOM_BG: Array<[string, string]> = [
