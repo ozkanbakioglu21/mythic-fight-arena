@@ -229,6 +229,7 @@ export class Game {
   private moves = 0;
   private seconds = 0;
   private won = false;
+  private lost = false;
   private history: Array<{ a: number; b: number }> = [];
   private levelIndex = 0;
   private tray: Array<{ id: number; symbol: number }> = []; // hazneye düşen eşlenen rünler (max 4)
@@ -375,6 +376,7 @@ export class Game {
     this.moves = 0;
     this.seconds = 0;
     this.won = false;
+    this.lost = false;
     this.history = [];
     this.tray = [];
     this.shards = [];
@@ -434,7 +436,7 @@ export class Game {
   }
 
   private click(x: number, y: number): void {
-    if (this.won) return;
+    if (this.won || this.lost) return;
     // En üstteki tıklanan açık taş.
     let target: Tile | null = null;
     for (const t of this.tiles) {
@@ -467,11 +469,9 @@ export class Game {
     }
     if (pairIdx !== -1) {
       this.breakPair(pairIdx, lastIdx);
-    } else if (this.tray.length > 4) {
-      // Taşma: en eski taş yerine döner (çözülebilirlik korunur).
-      const oldest = this.tray.shift()!;
-      const tile = this.tiles.find((t) => t.id === oldest.id);
-      if (tile) tile.removed = false;
+    } else if (this.tray.length >= 4) {
+      // Hazne doldu: oyuncu kaybeder.
+      this.lost = true;
     }
 
     // Kazanma.
@@ -491,7 +491,7 @@ export class Game {
   };
   private update(dt: number): void {
     this.time += dt;
-    if (!this.won) this.seconds += dt;
+    if (!this.won && !this.lost) this.seconds += dt;
     // Kırılma parçalarını güncelle.
     for (const s of this.shards) {
       s.life -= dt;
@@ -1051,6 +1051,23 @@ export class Game {
     c.fillText("[Yeni Oyun] Klavye: N", 900, 420);
     c.fillText("[Geri Al] Klavye: U", 900, 444);
     c.fillText("[Sonraki] Klavye: L", 900, 468);
+    // ---- Kayip ekrani ----
+    if (this.lost) {
+      c.fillStyle = "rgba(30,5,5,0.55)";
+      c.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      c.textAlign = "center";
+      c.textBaseline = "middle";
+      c.font = "bold 64px Georgia";
+      c.fillStyle = "#ff7a6e";
+      c.fillText("Kaybettin!", CANVAS_W / 2, 300);
+      c.font = "bold 26px Georgia";
+      c.fillStyle = "#f2c9c4";
+      c.fillText("Hazne doldu, eslesme kalmadi.", CANVAS_W / 2, 360);
+      c.fillStyle = "#e8a0a0";
+      c.font = "bold 20px Georgia";
+      c.fillText("[Yeniden Oyna] N    [Sonraki Seviye] L", CANVAS_W / 2, 410);
+    }
+
     // ---- Kazanma ekrani ----
     if (this.won) {
       c.fillStyle = "rgba(0,10,20,0.35)";
