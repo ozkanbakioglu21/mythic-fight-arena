@@ -243,6 +243,10 @@ export class Game {
     color: string;
     r: number;
   }> = [];
+  private bursts: Array<{ x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; r: number }> = [];
+  private floats: Array<{ x: number; y: number; life: number; max: number; text: string; color: string }> = [];
+  private pops: Array<{ x: number; y: number; life: number; max: number; symbol: number; open: boolean }> = [];
+  private time = 0;
 
   onHud?: (h: HudState) => void;
 
@@ -486,8 +490,8 @@ export class Game {
     this.raf = requestAnimationFrame(this.loop);
   };
   private update(dt: number): void {
-    if (this.won) return;
-    this.seconds += dt;
+    this.time += dt;
+    if (!this.won) this.seconds += dt;
     // Kırılma parçalarını güncelle.
     for (const s of this.shards) {
       s.life -= dt;
@@ -501,6 +505,131 @@ export class Game {
       }
     }
     this.shards = this.shards.filter((s) => s.life > 0);
+    for (const b of this.bursts) { b.life -= dt; b.vy += 600 * dt; b.x += b.vx * dt; b.y += b.vy * dt; }
+    this.bursts = this.bursts.filter((b) => b.life > 0);
+    for (const f of this.floats) { f.life -= dt; f.y -= 40 * dt; }
+    this.floats = this.floats.filter((f) => f.life > 0);
+    for (const pp of this.pops) pp.life -= dt;
+    this.pops = this.pops.filter((pp) => pp.life > 0);
+    // Kazaninca kutlama kivilcimlari fiskirir.
+    if (this.won) {
+      for (let k = 0; k < 2; k++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 60 + Math.random() * 200;
+        this.bursts.push({
+          x: CANVAS_W / 2 + (Math.random() - 0.5) * 320,
+          y: CANVAS_H - 120 + Math.random() * 60,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd - 140,
+          life: 0.6 + Math.random() * 0.6,
+          max: 1,
+          color: RUNE_COLORS[Math.floor(Math.random() * RUNE_COLORS.length)],
+          r: 4 + Math.random() * 6,
+        });
+      }
+    }
+    // Kazaninca kutlama kivilcimlari fiskirir.
+    if (this.won) {
+      for (let k = 0; k < 2; k++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 60 + Math.random() * 200;
+        this.bursts.push({
+          x: CANVAS_W / 2 + (Math.random() - 0.5) * 320,
+          y: CANVAS_H - 120 + Math.random() * 60,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd - 140,
+          life: 0.6 + Math.random() * 0.6,
+          max: 1,
+          color: RUNE_COLORS[Math.floor(Math.random() * RUNE_COLORS.length)],
+          r: 4 + Math.random() * 6,
+        });
+      }
+    }
+    // Kazaninca kutlama kivilcimlari fiskirir.
+    if (this.won) {
+      for (let k = 0; k < 2; k++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 60 + Math.random() * 200;
+        this.bursts.push({
+          x: CANVAS_W / 2 + (Math.random() - 0.5) * 320,
+          y: CANVAS_H - 120 + Math.random() * 60,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd - 140,
+          life: 0.6 + Math.random() * 0.6,
+          max: 1,
+          color: RUNE_COLORS[Math.floor(Math.random() * RUNE_COLORS.length)],
+          r: 4 + Math.random() * 6,
+        });
+      }
+    }
+    // Kazaninca kutlama kivilcimlari fiskirir.
+    if (this.won) {
+      for (let k = 0; k < 2; k++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 60 + Math.random() * 200;
+        this.bursts.push({
+          x: CANVAS_W / 2 + (Math.random() - 0.5) * 320,
+          y: CANVAS_H - 120 + Math.random() * 60,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd - 140,
+          life: 0.6 + Math.random() * 0.6,
+          max: 1,
+          color: RUNE_COLORS[Math.floor(Math.random() * RUNE_COLORS.length)],
+          r: 4 + Math.random() * 6,
+        });
+      }
+    }
+    // Kazaninca kutlama kivilcimlari fiskirir.
+    if (this.won) {
+      for (let k = 0; k < 2; k++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 60 + Math.random() * 200;
+        this.bursts.push({
+          x: CANVAS_W / 2 + (Math.random() - 0.5) * 320,
+          y: CANVAS_H - 120 + Math.random() * 60,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd - 140,
+          life: 0.6 + Math.random() * 0.6,
+          max: 1,
+          color: RUNE_COLORS[Math.floor(Math.random() * RUNE_COLORS.length)],
+          r: 4 + Math.random() * 6,
+        });
+      }
+    }
+    // Kazaninca kutlama kivilcimlari fiskirir.
+    if (this.won) {
+      for (let k = 0; k < 2; k++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 60 + Math.random() * 200;
+        this.bursts.push({
+          x: CANVAS_W / 2 + (Math.random() - 0.5) * 320,
+          y: CANVAS_H - 120 + Math.random() * 60,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd - 140,
+          life: 0.6 + Math.random() * 0.6,
+          max: 1,
+          color: RUNE_COLORS[Math.floor(Math.random() * RUNE_COLORS.length)],
+          r: 4 + Math.random() * 6,
+        });
+      }
+    }
+    // Kazaninca kutlama kivilcimlari fiskirir.
+    if (this.won) {
+      for (let k = 0; k < 2; k++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 60 + Math.random() * 200;
+        this.bursts.push({
+          x: CANVAS_W / 2 + (Math.random() - 0.5) * 320,
+          y: CANVAS_H - 120 + Math.random() * 60,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd - 140,
+          life: 0.6 + Math.random() * 0.6,
+          max: 1,
+          color: RUNE_COLORS[Math.floor(Math.random() * RUNE_COLORS.length)],
+          r: 4 + Math.random() * 6,
+        });
+      }
+    }
   }
 
   /** Haznedeki 4 taşı parçalara ayırıp patlatır ve hazneyi boşaltır. */
@@ -514,6 +643,20 @@ export class Game {
     }
     const eA = this.tray[a];
     const eB = this.tray[b];
+    if (eA && eB) {
+      const btA = this.tiles.find((tt) => tt.id === eA.id);
+      const btB = this.tiles.find((tt) => tt.id === eB.id);
+      for (const bt of [btA, btB]) {
+        if (!bt) continue;
+        for (let k = 0; k < 18; k++) {
+          const ang = Math.random() * Math.PI * 2;
+          const spd = 90 + Math.random() * 260;
+          this.bursts.push({ x: bt.sx, y: bt.sy, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd - 60, life: 0.7, max: 1, color: RUNE_COLORS[bt.symbol], r: 3 + Math.random() * 6 });
+        }
+        this.bursts.push({ x: bt.sx, y: bt.sy, vx: 0, vy: -40, life: 0.35, max: 0.35, color: "#ffffff", r: 26 });
+      }
+      this.floats.push({ x: (btA!.sx + btB!.sx) / 2, y: (btA!.sy + btB!.sy) / 2 - 10, life: 1.0, max: 1.0, text: "+2", color: "#ffd75e" });
+    }
     const shard = (slot: number, sym: number) => {
       const bx = CANVAS_W / 2 + (slot - 1.5) * 40;
       for (let k = 0; k < 6; k++) {
@@ -797,6 +940,48 @@ export class Game {
       this.drawTile(c, t, open, sel);
     }
 
+    // ---- Eslesme patlamasi (parlak parcaciklar) ----
+    for (const b of this.bursts) {
+      const a = Math.max(0, b.life / b.max);
+      c.globalAlpha = a * 0.9;
+      c.fillStyle = b.color;
+      c.beginPath();
+      c.arc(b.x, b.y, Math.max(1, b.r * a), 0, Math.PI * 2);
+      c.fill();
+    }
+    // ---- Suzulen yazi (+2) ----
+    for (const f of this.floats) {
+      const a = Math.max(0, f.life / f.max);
+      c.globalAlpha = a;
+      c.fillStyle = f.color;
+      c.font = "bold 26px Georgia";
+      c.textAlign = "center";
+      c.textBaseline = "middle";
+      c.fillText(f.text, f.x, f.y);
+      c.restore();
+      c.fillStyle = f.color;
+    }
+    // ---- Tas pop animasyonu (kaybolan halka + run) ----
+    for (const pp of this.pops) {
+      const k = pp.life / pp.max;
+      const a = Math.max(0, Math.min(1, k * 2.5));
+      c.save();
+      c.globalAlpha = a;
+      c.strokeStyle = RUNE_COLORS[pp.symbol];
+      c.lineWidth = 3;
+      const rr = (1 - k) * 46 + 8;
+      c.beginPath();
+      c.arc(pp.x, pp.y, rr, 0, Math.PI * 2);
+      c.stroke();
+      c.globalAlpha = a * 0.55;
+      c.fillStyle = RUNE_COLORS[pp.symbol];
+      c.font = "bold 40px 'Segoe UI Historic','Noto Sans Old Turkic',serif";
+      c.textAlign = "center";
+      c.textBaseline = "middle";
+      c.fillText(RUNES[pp.symbol], pp.x, pp.y);
+      c.restore();
+    }
+
     // ---- Kirilma parcaciklari (taslarin ustunde cizilir) ----
     for (const s of this.shards) {
       const a = Math.max(0, s.life / s.max);
@@ -866,6 +1051,22 @@ export class Game {
     c.fillText("[Yeni Oyun] Klavye: N", 900, 420);
     c.fillText("[Geri Al] Klavye: U", 900, 444);
     c.fillText("[Sonraki] Klavye: L", 900, 468);
+    // ---- Kazanma ekrani ----
+    if (this.won) {
+      c.fillStyle = "rgba(0,10,20,0.35)";
+      c.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      c.textAlign = "center";
+      c.textBaseline = "middle";
+      c.font = "bold 64px Georgia";
+      c.fillStyle = "#ffe08a";
+      c.fillText("Zafer!", CANVAS_W / 2, 300);
+      c.font = "bold 26px Georgia";
+      c.fillStyle = "#cfe6f2";
+      c.fillText("Tum taslar eslestirildi. Seviye tamamlandi!", CANVAS_W / 2, 360);
+      c.fillStyle = "#9fd0e0";
+      c.font = "bold 20px Georgia";
+      c.fillText("[Sonraki Seviye] L    [Yeniden Oyna] N", CANVAS_W / 2, 410);
+    }
   }
 
   private drawTile(
