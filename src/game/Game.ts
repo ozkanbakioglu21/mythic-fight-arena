@@ -297,16 +297,18 @@ export class Game {
     if (!this.currentLevel) {
       // Her oyunda farkli bir rastgele dizilim + rastgele gecmis/bg.
       const cells = randomShape(this.levelIndex, Math.floor(Math.random() * 100000) + 1);
-      const seasonal = this.isSeasonal();
-      const bg = seasonal
-        ? (["#163a26", "#24503a"] as [string, string])
-        : RANDOM_BG[this.levelIndex % RANDOM_BG.length];
+      const special = this.specialArt();
+      const seasonBg = ["#163a26", "#24503a"] as [string, string];
+      const animalBg = ["#2f3b1c", "#4a5b2a"] as [string, string];
+      const bg = special === "animals" ? animalBg : special === "seasonal" ? seasonBg : RANDOM_BG[this.levelIndex % RANDOM_BG.length];
       const name =
         this.levelIndex < LEVELS.length
           ? LEVELS[this.levelIndex].name
-          : seasonal
+          : special === "seasonal"
             ? "Mevsimler & Ağaçlar"
-            : `Rastgele #${this.levelIndex + 1}`;
+            : special === "animals"
+              ? "Hayvanlar"
+              : `Rastgele #${this.levelIndex + 1}`;
       this.currentLevel = { name, cells, bg };
     }
     return this.currentLevel;
@@ -319,7 +321,7 @@ export class Game {
     const def = this.level();
     const cells = def.cells;
     let runes = Math.min(RUNES.length, Math.floor(cells.length / 2));
-    if (this.isSeasonal()) runes = 8; // 4 mevsim + 4 ağaç
+    if (this.specialArt() !== "none") runes = 8; // özel seviyelerde 8 tür
 
     const symbols: number[] = [];
     for (let s = 0; s < runes; s++) {
@@ -1121,8 +1123,282 @@ export class Game {
     }
   }
 
-  private isSeasonal(): boolean {
-    return this.levelIndex === 100;
+  private specialArt(): "none" | "seasonal" | "animals" {
+    if (this.levelIndex === 100) return "seasonal";
+    if (this.levelIndex === 200) return "animals";
+    return "none";
+  }
+
+  /** 201. seviye (Hayvanlar) taş yüzü çizimi. t.symbol % 8:
+   *  0 at · 1 koyun · 2 kartal · 3 kurt · 4 geyik · 5 boğa ·
+   *  6 tilki · 7 yılan. */
+  private drawAnimalIcon(
+    c: CanvasRenderingContext2D,
+    t: Tile,
+    open: boolean,
+  ): void {
+    const cx = t.sx;
+    const cy = t.sy + 6;
+    c.save();
+    c.globalAlpha *= open ? 1 : 0.32;
+    c.lineCap = "round";
+    c.lineJoin = "round";
+    switch (t.symbol % 8) {
+      case 0: {
+        // At (kafa profili)
+        c.strokeStyle = "#5a3a1c";
+        c.fillStyle = "#a06a3a";
+        c.lineWidth = 2.5;
+        c.beginPath();
+        c.moveTo(cx - 8, cy + 16);
+        c.quadraticCurveTo(cx - 16, cy + 2, cx - 9, cy - 4);
+        c.lineTo(cx - 4, cy - 14);
+        c.lineTo(cx + 2, cy - 12);
+        c.lineTo(cx + 5, cy - 6);
+        c.quadraticCurveTo(cx + 12, cy + 0, cx + 10, cy + 8);
+        c.quadraticCurveTo(cx + 4, cy + 12, cx - 8, cy + 16);
+        c.closePath();
+        c.fill();
+        c.stroke();
+        c.strokeStyle = "#6b4423";
+        c.lineWidth = 2;
+        c.beginPath();
+        c.moveTo(cx - 8, cy - 2);
+        c.quadraticCurveTo(cx - 2, cy + 2, cx + 2, cy + 8);
+        c.stroke();
+        break;
+      }
+      case 1: {
+        // Koyun (yün + kafa)
+        c.fillStyle = "#f7f2e6";
+        c.beginPath();
+        c.arc(cx, cy + 2, 12, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.arc(cx - 8, cy + 2, 6, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.arc(cx + 8, cy + 2, 6, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = "#d9b48a";
+        c.beginPath();
+        c.ellipse(cx, cy - 10, 5, 6, 0, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = "#3a2a1a";
+        c.beginPath();
+        c.arc(cx + 2, cy - 11, 1.2, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.arc(cx - 9, cy - 11, 2, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.arc(cx + 8, cy - 11, 2, 0, Math.PI * 2);
+        c.fill();
+        break;
+      }
+      case 2: {
+        // Kartal (kanatlı kuş ikonu)
+        c.fillStyle = "#7a4a1a";
+        c.beginPath();
+        c.ellipse(cx, cy + 2, 5, 9, 0, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.moveTo(cx - 3, cy - 2);
+        c.lineTo(cx - 18, cy - 8);
+        c.lineTo(cx - 8, cy + 4);
+        c.closePath();
+        c.fill();
+        c.beginPath();
+        c.moveTo(cx + 3, cy - 2);
+        c.lineTo(cx + 18, cy - 8);
+        c.lineTo(cx + 8, cy + 4);
+        c.closePath();
+        c.fill();
+        c.fillStyle = "#5a3412";
+        c.beginPath();
+        c.arc(cx, cy - 10, 3, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = "#ffcf33";
+        c.beginPath();
+        c.moveTo(cx, cy - 8);
+        c.lineTo(cx + 4, cy - 12);
+        c.lineTo(cx, cy - 13);
+        c.closePath();
+        c.fill();
+        break;
+      }
+      case 3: {
+        // Kurt (kafa)
+        c.fillStyle = "#8a959f";
+        c.beginPath();
+        c.moveTo(cx - 10, cy + 2);
+        c.lineTo(cx, cy - 14);
+        c.lineTo(cx + 10, cy + 2);
+        c.closePath();
+        c.fill();
+        c.beginPath();
+        c.moveTo(cx - 6, cy - 6);
+        c.lineTo(cx - 10, cy - 18);
+        c.lineTo(cx - 1, cy - 10);
+        c.closePath();
+        c.fill();
+        c.beginPath();
+        c.moveTo(cx + 6, cy - 6);
+        c.lineTo(cx + 10, cy - 18);
+        c.lineTo(cx + 1, cy - 10);
+        c.closePath();
+        c.fill();
+        c.fillStyle = "#5f6975";
+        c.beginPath();
+        c.ellipse(cx, cy + 5, 7, 4, 0, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = "#fff";
+        c.beginPath();
+        c.arc(cx - 4, cy - 3, 1.6, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.arc(cx + 4, cy - 3, 1.6, 0, Math.PI * 2);
+        c.fill();
+        break;
+      }
+      case 4: {
+        // Geyik (kafa + boynuz)
+        c.fillStyle = "#c2844a";
+        c.beginPath();
+        c.ellipse(cx, cy + 3, 7, 9, 0, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = "#8a5a28";
+        c.lineWidth = 2;
+        c.beginPath();
+        c.moveTo(cx - 4, cy - 5);
+        c.lineTo(cx - 6, cy - 12);
+        c.lineTo(cx - 10, cy - 14);
+        c.moveTo(cx - 6, cy - 12);
+        c.lineTo(cx - 3, cy - 17);
+        c.stroke();
+        c.beginPath();
+        c.moveTo(cx + 4, cy - 5);
+        c.lineTo(cx + 6, cy - 12);
+        c.lineTo(cx + 10, cy - 14);
+        c.moveTo(cx + 6, cy - 12);
+        c.lineTo(cx + 3, cy - 17);
+        c.stroke();
+        c.fillStyle = "#a06a3a";
+        c.beginPath();
+        c.ellipse(cx - 8, cy - 2, 2.5, 5, -0.3, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.ellipse(cx + 8, cy - 2, 2.5, 5, 0.3, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = "#2a1a0e";
+        c.beginPath();
+        c.arc(cx - 2, cy + 1, 1.2, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.arc(cx + 2, cy + 1, 1.2, 0, Math.PI * 2);
+        c.fill();
+        break;
+      }
+      case 5: {
+        // Boğa (kafa + boynuzlar)
+        c.fillStyle = "#8a4422";
+        c.beginPath();
+        c.ellipse(cx, cy + 2, 11, 8, 0, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = "#6b3418";
+        c.beginPath();
+        c.ellipse(cx - 12, cy + 1, 2, 4, -0.4, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.ellipse(cx + 12, cy + 1, 2, 4, 0.4, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = "#e0d8c0";
+        c.lineWidth = 2.5;
+        c.beginPath();
+        c.moveTo(cx - 8, cy - 3);
+        c.quadraticCurveTo(cx - 14, cy - 12, cx - 6, cy - 14);
+        c.stroke();
+        c.beginPath();
+        c.moveTo(cx + 8, cy - 3);
+        c.quadraticCurveTo(cx + 14, cy - 12, cx + 6, cy - 14);
+        c.stroke();
+        c.fillStyle = "#2a1a0e";
+        c.beginPath();
+        c.arc(cx - 4, cy + 1, 1.2, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.arc(cx + 4, cy + 1, 1.2, 0, Math.PI * 2);
+        c.fill();
+        break;
+      }
+      case 6: {
+        // Tilki (kafa)
+        c.fillStyle = "#e8912f";
+        c.beginPath();
+        c.moveTo(cx, cy - 4);
+        c.lineTo(cx + 8, cy + 8);
+        c.lineTo(cx - 8, cy + 8);
+        c.closePath();
+        c.fill();
+        c.fillStyle = "#fff";
+        c.beginPath();
+        c.moveTo(cx, cy - 4);
+        c.lineTo(cx + 3, cy + 8);
+        c.lineTo(cx - 3, cy + 8);
+        c.closePath();
+        c.fill();
+        c.fillStyle = "#c26f1c";
+        c.beginPath();
+        c.moveTo(cx - 6, cy + 2);
+        c.lineTo(cx - 9, cy - 8);
+        c.lineTo(cx - 2, cy - 2);
+        c.closePath();
+        c.fill();
+        c.beginPath();
+        c.moveTo(cx + 6, cy + 2);
+        c.lineTo(cx + 9, cy - 8);
+        c.lineTo(cx + 2, cy - 2);
+        c.closePath();
+        c.fill();
+        c.fillStyle = "#3a2410";
+        c.beginPath();
+        c.arc(cx - 4, cy + 2, 1.4, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.arc(cx + 4, cy + 2, 1.4, 0, Math.PI * 2);
+        c.fill();
+        break;
+      }
+      default: {
+        // Yılan (7) S kıvrım
+        c.strokeStyle = "#4a9e6a";
+        c.lineWidth = 5;
+        c.beginPath();
+        c.moveTo(cx - 14, cy + 12);
+        c.quadraticCurveTo(cx + 14, cy + 10, cx - 2, cy + 2);
+        c.quadraticCurveTo(cx - 16, cy - 6, cx + 2, cy - 8);
+        c.quadraticCurveTo(cx + 12, cy - 10, cx + 8, cy - 13);
+        c.stroke();
+        c.fillStyle = "#4a9e6a";
+        c.beginPath();
+        c.arc(cx + 8, cy - 13, 4, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = "#e23030";
+        c.lineWidth = 1.5;
+        c.beginPath();
+        c.moveTo(cx + 12, cy - 13);
+        c.lineTo(cx + 17, cy - 16);
+        c.moveTo(cx + 12, cy - 13);
+        c.lineTo(cx + 16, cy - 11);
+        c.stroke();
+        c.fillStyle = "#fff";
+        c.beginPath();
+        c.arc(cx + 9, cy - 14, 1.2, 0, Math.PI * 2);
+        c.fill();
+        break;
+      }
+    }
+    c.restore();
   }
 
   /** 101. seviye (Mevsimler & Ağaçlar) taş yüzü çizimi. t.symbol % 8:
@@ -1387,7 +1663,10 @@ export class Game {
     c.stroke();
 
     // ---- Taş yüzü: rün (normal) / mevsim+ağaç (101. seviye) ----
-    if (this.isSeasonal()) {
+    const art = this.specialArt();
+    if (art === "animals") {
+      this.drawAnimalIcon(c, t, open);
+    } else if (art === "seasonal") {
       this.drawSeasonIcon(c, t, open);
     } else {
       c.font =
