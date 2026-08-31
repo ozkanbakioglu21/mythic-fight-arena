@@ -230,6 +230,7 @@ export class Game {
   private seconds = 0;
   private won = false;
   private lost = false;
+  private restartTimer = -1;
   private history: Array<{ a: number; b: number }> = [];
   private levelIndex = 0;
   private tray: Array<{ id: number; symbol: number }> = []; // hazneye düşen eşlenen rünler (max 4)
@@ -377,6 +378,7 @@ export class Game {
     this.seconds = 0;
     this.won = false;
     this.lost = false;
+    this.restartTimer = -1;
     this.history = [];
     this.tray = [];
     this.shards = [];
@@ -470,8 +472,9 @@ export class Game {
     if (pairIdx !== -1) {
       this.breakPair(pairIdx, lastIdx);
     } else if (this.tray.length >= 4) {
-      // Hazne doldu: oyuncu kaybeder.
+      // Hazne doldu: oyuncu kaybeder, kisa sure sonra yeniden baslar.
       this.lost = true;
+      this.restartTimer = 1.4;
     }
 
     // Kazanma.
@@ -511,6 +514,12 @@ export class Game {
     this.floats = this.floats.filter((f) => f.life > 0);
     for (const pp of this.pops) pp.life -= dt;
     this.pops = this.pops.filter((pp) => pp.life > 0);
+    if (this.lost) {
+      this.restartTimer -= dt;
+      if (this.restartTimer <= 0) {
+        this.newGame();
+      }
+    }
     // Kazaninca kutlama kivilcimlari fiskirir.
     if (this.won) {
       for (let k = 0; k < 2; k++) {
