@@ -46,12 +46,14 @@ export interface HudState {
 const RUNES = [
   "𐰀", "𐰆", "𐰉", "𐰒", "𐰤", "𐰞", "𐰱", "𐰾",
   "𐰋", "𐰑", "𐰚", "𐰃", "𐰅", "𐰇", "𐰈", "𐰢",
+  "𐰁", "𐰂", "𐰗", "𐰜",
 ];
 
 // Her rün sembolüne özel renk (açık taş üzerinde okunaklı, doygun tonlar).
 const RUNE_COLORS = [
   "#c0392b", "#e07b39", "#2e86c1", "#27ae60", "#8e44ad", "#d35400", "#16a085", "#7d3c98",
   "#c1286f", "#6c8e23", "#e8432f", "#0e7ac7", "#9b5de5", "#f1a208", "#0ca3b2", "#7d4fd6",
+  "#6f4e37", "#4a148c", "#b0990a", "#0b7285",
 ];
 const TILE_W = 58;
 const TILE_H = 78;
@@ -152,7 +154,7 @@ function randomShape(levelIndex: number, seedOffset = 0): Array<[number, number]
   const rng = mulberry32(levelIndex * 104729 + 13 + seedOffset);
   const cols = 12;
   const rows = 6;
-  const MAX_CELLS = 32;
+  const MAX_CELLS = 40;
   const grid = new Set<string>();
   // Karmaşık taş dizimleri: dikdörtgen, L, T, artı, basamak ve kule şekilleri.
   const shapes = [
@@ -165,7 +167,7 @@ function randomShape(levelIndex: number, seedOffset = 0): Array<[number, number]
     { w: 3, h: 3, cells: stair() },
     { w: 3, h: 4, cells: tower() },
   ];
-  const blocks = 3 + (levelIndex % 6);
+  const blocks = 6 + (levelIndex % 7);
   for (let i = 0; i < blocks && grid.size < MAX_CELLS; i++) {
     const sh = shapes[Math.floor(rng() * shapes.length)];
     const cx = Math.floor(rng() * (cols - sh.w + 1));
@@ -311,7 +313,7 @@ export class Game {
     // kalkınca alttakiler açılır -> her seviye her zaman çözülebilir.
     const def = this.level();
     const cells = def.cells;
-    const runes = Math.min(16, Math.floor(cells.length / 2));
+    const runes = Math.min(RUNES.length, Math.floor(cells.length / 2));
 
     const symbols: number[] = [];
     for (let s = 0; s < runes; s++) {
