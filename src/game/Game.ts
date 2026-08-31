@@ -1136,6 +1136,9 @@ export class Game {
     const cy = t.sy + 6;
     c.save();
     c.globalAlpha *= open ? 1 : 0.32;
+    c.shadowColor = "rgba(10,5,0,0.40)";
+    c.shadowBlur = 5;
+    c.shadowOffsetY = 2;
     c.lineCap = "round";
     c.lineJoin = "round";
     switch (t.symbol % 8) {
@@ -1408,6 +1411,9 @@ export class Game {
     const cy = t.sy + 6;
     c.save();
     c.globalAlpha *= open ? 1 : 0.32;
+    c.shadowColor = "rgba(20,10,0,0.40)";
+    c.shadowBlur = 5;
+    c.shadowOffsetY = 2;
     c.strokeStyle = "#3a2a1a";
     c.lineWidth = 3;
     c.lineCap = "round";
@@ -1589,6 +1595,7 @@ export class Game {
     // ---- Govde: dikey degrade + bevel ----
     const bg = c.createLinearGradient(0, yTop, 0, yTop + h);
     bg.addColorStop(0, faceTop);
+    bg.addColorStop(0.45, shade(open ? "#f7ecd2" : face, open ? -3 : 3));
     bg.addColorStop(1, faceBot);
     c.fillStyle = bg;
     c.beginPath();
@@ -1670,25 +1677,69 @@ export class Game {
       c.textAlign = "center";
       c.textBaseline = "middle";
       if (open && canTake) {
-        c.fillStyle = "rgba(0,0,0,0.5)";
-        c.fillText(RUNES[t.symbol], t.sx + 2, t.sy + 3);
+        const rc = RUNE_COLORS[t.symbol];
+        const rg = c.createLinearGradient(0, t.sy - 15, 0, t.sy + 17);
+        rg.addColorStop(0, shade(rc, 36));
+        rg.addColorStop(0.5, rc);
+        rg.addColorStop(1, shade(rc, -30));
         const glow = c.createRadialGradient(t.sx, t.sy, 2, t.sx, t.sy, 30);
-        glow.addColorStop(0, RUNE_COLORS[t.symbol]);
+        glow.addColorStop(0, rc);
         glow.addColorStop(1, "transparent");
-        c.globalAlpha = 0.25;
+        c.globalAlpha = 0.3;
         c.fillStyle = glow;
         c.beginPath();
         c.arc(t.sx, t.sy, 30, 0, Math.PI * 2);
         c.fill();
         c.globalAlpha = 1;
-        c.fillStyle = RUNE_COLORS[t.symbol];
+        c.save();
+        c.shadowColor = "rgba(0,0,0,0.6)";
+        c.shadowBlur = 3;
+        c.shadowOffsetY = 1;
+        c.fillStyle = "rgba(0,0,0,0.55)";
+        c.fillText(RUNES[t.symbol], t.sx + 1.5, t.sy + 2.5);
+        c.fillStyle = rg;
         c.fillText(RUNES[t.symbol], t.sx, t.sy);
+        c.restore();
       } else {
-        c.globalAlpha = 0.4;
-        c.fillStyle = RUNE_COLORS[t.symbol];
+        const rc = RUNE_COLORS[t.symbol];
+        const rg = c.createLinearGradient(0, t.sy - 15, 0, t.sy + 17);
+        rg.addColorStop(0, shade(rc, 36));
+        rg.addColorStop(0.5, rc);
+        rg.addColorStop(1, shade(rc, -30));
+        c.globalAlpha = 0.55;
+        c.fillStyle = rg;
         c.fillText(RUNES[t.symbol], t.sx, t.sy);
         c.globalAlpha = 1;
       }
+    }
+
+    // ---- Taş yüzü sanatsal ışıklandırma (cam vurgusu + iç gölge) ----
+    if (open) {
+      c.save();
+      const gA = c.createRadialGradient(
+        x + w * 0.36,
+        yTop + h * 0.28,
+        2,
+        x + w * 0.36,
+        yTop + h * 0.28,
+        w * 0.95,
+      );
+      gA.addColorStop(0, "rgba(255,255,255,0.30)");
+      gA.addColorStop(1, "rgba(255,255,255,0)");
+      c.fillStyle = gA;
+      c.beginPath();
+      c.roundRect(x + 2, yTop + 2, w - 4, h - 4, R - 1);
+      c.fill();
+      c.restore();
+      c.save();
+      const gB = c.createLinearGradient(0, yTop + h * 0.45, 0, yTop + h);
+      gB.addColorStop(0, "rgba(120,80,20,0)");
+      gB.addColorStop(1, "rgba(120,80,20,0.22)");
+      c.fillStyle = gB;
+      c.beginPath();
+      c.roundRect(x + 2, yTop + 2, w - 4, h - 4, R - 1);
+      c.fill();
+      c.restore();
     }
 
     // ---- Secili vurgusu ----
