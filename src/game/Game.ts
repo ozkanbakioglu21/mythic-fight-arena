@@ -43,6 +43,7 @@ export interface HudState {
   score: number;
   combo: number;
   stars: number;
+  fates: string[];
 }
 
 // Göktürk rünleri (Orhun alfabesi). Her biri bir "aile" = 4 taş.
@@ -257,6 +258,7 @@ export class Game {
   private score = 0;
   private combo = 0;
   private comboTimer = 0;
+  private fates: string[] = [];
 
   onHud?: (h: HudState) => void;
 
@@ -422,6 +424,7 @@ export class Game {
     this.combo = 0;
     this.comboTimer = 0;
     this.shards = [];
+    this.fates = this.rollFates();
     this.buildLayout();
     this.emitHud();
   }
@@ -531,7 +534,7 @@ export class Game {
     }
     if (pairIdx !== -1) {
       this.breakPair(pairIdx, lastIdx);
-    } else if (this.tray.length >= 4) {
+    } else if (this.tray.length >= this.maxTray()) {
       // Hazne doldu: oyuncu kaybeder.
       this.lost = true;
     }
@@ -747,8 +750,81 @@ export class Game {
     this.tray.splice(b, 1);
     this.tray.splice(a, 1);
     this.combo++;
-    this.comboTimer = 5;
-    this.score += 100 * Math.min(this.combo, 10);
+    this.comboTimer = this.comboDuration();
+    this.score += Math.round(100 * Math.min(this.combo, 10) * this.scoreMult());
+  }
+
+  private rollFates(): string[] {
+    const bonus = ["alp", "iron", "wolf"];
+    const lanet = ["shadow", "limited", "heavy"];
+    const out: string[] = [];
+    if (Math.random() < 0.5) {
+      out.push(bonus[Math.floor(Math.random() * bonus.length)]);
+    } else {
+      out.push(lanet[Math.floor(Math.random() * lanet.length)]);
+    }
+    if (Math.random() < 0.25) {
+      const hasBonus = out.every((id) => bonus.includes(id));
+      const pool = hasBonus ? lanet : bonus;
+      out.push(pool[Math.floor(Math.random() * pool.length)]);
+    }
+    return out;
+  }
+
+  private comboDuration(): number {
+    let d = 5;
+    if (this.fates.includes("alp")) d += 2;
+    if (this.fates.includes("shadow")) d -= 2;
+    return Math.max(2, d);
+  }
+
+  private maxTray(): number {
+    let m = 4;
+    if (this.fates.includes("iron")) m += 1;
+    if (this.fates.includes("limited")) m -= 1;
+    return Math.max(2, m);
+  }
+
+  private scoreMult(): number {
+    let m = 1;
+    if (this.fates.includes("wolf")) m *= 1.25;
+    if (this.fates.includes("heavy")) m *= 0.8;
+    return m;
+  }
+
+  private drawFates(c: CanvasRenderingContext2D): void {
+    if (this.fates.length === 0) return;
+    const labels: Record<string, string> = {
+      alp: "Alp Rünü +2sn",
+      iron: "Hazne +1",
+      wolf: "Puan x1.25",
+      shadow: "Combo -2sn",
+      limited: "Hazne -1",
+      heavy: "Puan x0.8",
+    };
+    const bonus = ["alp", "iron", "wolf"];
+    const y = 172;
+    c.font = "bold 13px Georgia";
+    c.textBaseline = "middle";
+    const widths = this.fates.map((id) => c.measureText(labels[id]).width + 22);
+    const total = widths.reduce((a, b) => a + b, 0) + 8 * (this.fates.length - 1);
+    let x = CANVAS_W / 2 - total / 2;
+    for (let i = 0; i < this.fates.length; i++) {
+      const id = this.fates[i];
+      const isB = bonus.includes(id);
+      c.fillStyle = isB ? "rgba(212,175,55,0.26)" : "rgba(170,90,70,0.30)";
+      c.beginPath();
+      c.roundRect(x, y - 10, widths[i], 20, 8);
+      c.fill();
+      c.strokeStyle = isB ? "rgba(212,175,55,0.7)" : "rgba(200,120,90,0.7)";
+      c.lineWidth = 1.2;
+      c.beginPath();
+      c.roundRect(x, y - 10, widths[i], 20, 8);
+      c.stroke();
+      c.fillStyle = isB ? "#ffe9a8" : "#e8b8a6";
+      c.fillText(labels[id], x + widths[i] / 2, y + 1);
+      x += widths[i] + 8;
+    }
   }
 
   private calcStars(): number {
@@ -788,6 +864,7 @@ export class Game {
       score: this.score,
       combo: this.combo,
       stars: this.won ? this.calcStars() : 0,
+      fates: this.fates,
     });
   }
 
@@ -1034,6 +1111,7 @@ export class Game {
     c.font = "bold 22px Georgia";
     c.fillStyle = "#9fd0e0";
     c.fillText(`Seviye ${this.levelIndex + 1} · ${def.name}`, CANVAS_W / 2, 92);
+    this.drawFates(c);
 
     // Yerleşimin çerçevesi (taş alanına göre).
     const boxW = this.layoutCols * (TILE_W + GAP) + GAP;
