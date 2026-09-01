@@ -23,6 +23,10 @@ export default function App() {
         game.undo();
       } else if (e.key === "l" || e.key === "L") {
         game.nextLevel();
+      } else if (e.key === "h" || e.key === "H") {
+        game.hint();
+      } else if (e.key === "s" || e.key === "S") {
+        game.shuffle();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -82,6 +86,12 @@ export default function App() {
         </button>
         <button className="btn tbtn" onClick={() => gameRef.current?.undo()}>
           Geri Al (U)
+        </button>
+        <button className="btn tbtn" onClick={() => gameRef.current?.hint()}>
+          İpucu (H)
+        </button>
+        <button className="btn tbtn" disabled={!hud || hud.shuffles <= 0} onClick={() => gameRef.current?.shuffle()}>
+          Karıştır ({hud?.shuffles ?? 0})
         </button>
         <button className="btn tbtn" onClick={() => gameRef.current?.nextLevel()}>
           Sonraki (L)

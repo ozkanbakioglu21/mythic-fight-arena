@@ -44,6 +44,8 @@ export interface HudState {
   combo: number;
   stars: number;
   fates: string[];
+  shuffles: number;
+  cleanWin: boolean;
 }
 
 // Göktürk rünleri (Orhun alfabesi). Her biri bir "aile" = 4 taş.
@@ -259,6 +261,9 @@ export class Game {
   private combo = 0;
   private comboTimer = 0;
   private fates: string[] = [];
+  private shuffleCount = 0;
+  private maxShuffles = 3;
+  private hintIds: number[] = [];
 
   onHud?: (h: HudState) => void;
 
@@ -424,6 +429,8 @@ export class Game {
     this.combo = 0;
     this.comboTimer = 0;
     this.shards = [];
+    this.shuffleCount = 0;
+    this.hintIds = [];
     this.fates = this.rollFates();
     this.buildLayout();
     this.emitHud();
@@ -542,6 +549,10 @@ export class Game {
     // Kazanma.
     if (this.tiles.every((t) => t.removed)) {
       this.won = true;
+      if (this.shuffleCount === 0) {
+        this.score += 500;
+        this.floats.push({ x: CANVAS_W / 2, y: CANVAS_H / 2 - 40, life: 1.4, max: 1.4, text: "Temiz Zafer! +500", color: "#ffd75e" });
+      }
     }
     this.emitHud();
   }
@@ -754,6 +765,64 @@ export class Game {
     this.score += Math.round(100 * Math.min(this.combo, 10) * this.scoreMult());
   }
 
+  shuffle(): void {
+    if (this.shuffleCount >= this.maxShuffles || this.won || this.lost) return;
+    const remaining = this.tiles.filter((t) => !t.removed);
+    const syms = remaining.map((t) => t.symbol);
+    for (let i = syms.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [syms[i], syms[j]] = [syms[j], syms[i]];
+    }
+    remaining.forEach((t, i) => (t.symbol = syms[i]));
+    this.shuffleCount++;
+    this.hintIds = [];
+    this.emitHud();
+  }
+
+  hint(): void {
+    if (this.won || this.lost) return;
+    this.hintIds = [];
+    const usable = (t: Tile) => !t.removed && this.isOpen(t) && this.sideFree(t);
+    // Once haznedeki tek tasa karsi acik esi var mi? (en dogrudan hamle)
+    for (const te of this.tray) {
+      const e = this.tiles.find((t) => usable(t) && t.symbol === te.symbol && t.id !== te.id);
+      if (e) {
+        this.hintIds = [e.id];
+        this.emitHud();
+        return;
+      }
+    }
+    // Yoksa tahtada ayni sembollu iki acik tasa bak.
+    const seen = new Map<number, Tile>();
+    for (const o of this.tiles) {
+      if (!usable(o)) continue;
+      if (seen.has(o.symbol)) {
+        this.hintIds = [seen.get(o.symbol)!.id, o.id];
+        this.emitHud();
+        return;
+      }
+      seen.set(o.symbol, o);
+    }
+    this.emitHud();
+  }
+
+  private drawHint(c: CanvasRenderingContext2D): void {
+    for (const id of this.hintIds) {
+      const t = this.tiles.find((x) => x.id === id);
+      if (!t || t.removed) continue;
+      const p = 0.5 + 0.5 * Math.sin(this.time * 6);
+      c.save();
+      c.strokeStyle = "rgba(255,220,80," + (0.5 + 0.4 * p) + ")";
+      c.lineWidth = 4;
+      c.shadowColor = "rgba(255,220,80,0.9)";
+      c.shadowBlur = 12 + 8 * p;
+      c.beginPath();
+      c.roundRect(t.sx - TILE_W / 2 - 5, t.sy - TILE_H / 2 - 5, TILE_W + 10, TILE_H + 10, 12);
+      c.stroke();
+      c.restore();
+    }
+  }
+
   private rollFates(): string[] {
     const bonus = ["alp", "iron", "wolf"];
     const lanet = ["shadow", "limited", "heavy"];
@@ -865,6 +934,8 @@ export class Game {
       combo: this.combo,
       stars: this.won ? this.calcStars() : 0,
       fates: this.fates,
+      shuffles: this.maxShuffles - this.shuffleCount,
+      cleanWin: this.won && this.shuffleCount === 0,
     });
   }
 
@@ -1151,6 +1222,7 @@ export class Game {
       const sel = t.id === this.selectedId;
       this.drawTile(c, t, open, sel, open && this.sideFree(t));
     }
+    this.drawHint(c);
 
     // ---- Eslesme patlamasi (parlak parcaciklar) ----
     for (const b of this.bursts) {
@@ -1254,7 +1326,7 @@ export class Game {
     if (this.combo > 1 && this.comboTimer > 0) topLine += `   Combo ×${this.combo}`;
     c.fillText(topLine, CANVAS_W / 2, 116);
     c.fillStyle = "#d4e8f2";
-    c.fillText(`Kalan: ${remaining}/${total}   Hamle: ${this.moves}   Süre: ${Math.floor(this.seconds)} sn`, CANVAS_W / 2, 144);
+    c.fillText(`Kalan: ${remaining}/${total}   Hamle: ${this.moves}   Süre: ${Math.floor(this.seconds)} sn   Karıştır: ${this.maxShuffles - this.shuffleCount}`, CANVAS_W / 2, 144);
 
     // Alttaki kısayollar (haznenin üstü).
     c.fillStyle = "#7f96b8";
