@@ -311,10 +311,13 @@ export class Game {
     return this.currentLevel;
   }
 
+
   private buildLayout(): void {
-    // Seviyenin dizimindeki her hücre 2 katman taş alır (alt + üst).
-    // Üst katmandaki tüm taşlar açıktır ve çiftler halinde eşleştirilebilir;
-    // kalkınca alttakiler açılır -> her seviye her zaman çözülebilir.
+    // Temel tasarım: her hücre 2 katman taş (alt + üst). Üst katman açıktır;
+    // kalkınca alttakiler açılır. 10. seviyeden itibaren tahtanın merkez
+    // bandındaki hücrelere ekstra üst katmanlar biner: 10+ → 3 kat,
+    // 50+ → 4 kat. Ekstra katmanlar üstte açık dizilir ve ikiz çiftlerle
+    // (aynı sembolden iki açık taş) kendi aralarında eşleşir.
     const def = this.level();
     const cells = def.cells;
     let runes = Math.min(RUNES.length, Math.floor(cells.length / 2));
@@ -339,6 +342,18 @@ export class Game {
     this.layoutCols = cols + 1;
     this.layoutRows = rows + 1;
 
+    // Merkez bandı (ortadaki ~1/3 kesişim) hücreleri — ekstra katmanlar buraya biner.
+    const layers = this.levelIndex >= 49 ? 4 : this.levelIndex >= 9 ? 3 : 2;
+    const cMn = Math.max(0, Math.floor((cols + 1) / 3));
+    const cMx = Math.min(cols, cols - 1 - Math.floor((cols + 1) / 3));
+    const rMn = Math.max(0, Math.floor((rows + 1) / 3));
+    const rMx = Math.min(rows, rows - 1 - Math.floor((rows + 1) / 3));
+    const centerCells: Array<[number, number]> = [];
+    for (const [c, r] of cells) {
+      if (c >= cMn && c <= cMx && r >= rMn && r <= rMx) centerCells.push([c, r]);
+    }
+    if (centerCells.length % 2 !== 0) centerCells.pop();
+
     let idx = 0;
     for (const [col, row] of cells) {
       if (idx + 2 > symbols.length) break;
@@ -347,8 +362,23 @@ export class Game {
       this.tiles.push(this.makeTile(s0, col, row, 0));
       this.tiles.push(this.makeTile(s1, col, row, 1));
     }
-  }
 
+    // Merkez ekstra üst katmanlar: her ikiz çift aynı sembolden iki açık taş
+    // olarak konur, böylece üstteki taşlar kendi aralarında eşleşebilir.
+    const extraLayers = layers - 2;
+    if (extraLayers > 0 && centerCells.length >= 2) {
+      for (let L = 0; L < extraLayers; L++) {
+        const layerNo = 2 + L;
+        for (let i = 0; i + 1 < centerCells.length; i += 2) {
+          const sym = Math.floor(Math.random() * runes);
+          const [c1, r1] = centerCells[i];
+          const [c2, r2] = centerCells[i + 1];
+          this.tiles.push(this.makeTile(sym, c1, r1, layerNo));
+          this.tiles.push(this.makeTile(sym, c2, r2, layerNo));
+        }
+      }
+    }
+  }
   private layoutCols = 4;
   private layoutRows = 4;
 
