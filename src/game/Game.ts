@@ -40,6 +40,9 @@ export interface HudState {
   stuck: boolean;
   level: number;
   levelName: string;
+  score: number;
+  combo: number;
+  stars: number;
 }
 
 // Göktürk rünleri (Orhun alfabesi). Her biri bir "aile" = 4 taş.
@@ -251,6 +254,9 @@ export class Game {
   private floats: Array<{ x: number; y: number; life: number; max: number; text: string; color: string }> = [];
   private pops: Array<{ x: number; y: number; life: number; max: number; symbol: number; open: boolean }> = [];
   private time = 0;
+  private score = 0;
+  private combo = 0;
+  private comboTimer = 0;
 
   onHud?: (h: HudState) => void;
 
@@ -420,6 +426,9 @@ export class Game {
     this.currentLevel = null;
     this.history = [];
     this.tray = [];
+    this.score = 0;
+    this.combo = 0;
+    this.comboTimer = 0;
     this.shards = [];
     this.buildLayout();
     this.emitHud();
@@ -553,6 +562,10 @@ export class Game {
   private update(dt: number): void {
     this.time += dt;
     if (!this.won && !this.lost) this.seconds += dt;
+    if (this.comboTimer > 0) {
+      this.comboTimer -= dt;
+      if (this.comboTimer <= 0) this.combo = 0;
+    }
     // Kırılma parçalarını güncelle.
     for (const s of this.shards) {
       s.life -= dt;
@@ -741,6 +754,17 @@ export class Game {
     this.moves++;
     this.tray.splice(b, 1);
     this.tray.splice(a, 1);
+    this.combo++;
+    this.comboTimer = 5;
+    this.score += 100 * Math.min(this.combo, 10);
+  }
+
+  private calcStars(): number {
+    const pairs = Math.max(1, this.tiles.length / 2);
+    const t = this.seconds;
+    if (t <= pairs * 4) return 3;
+    if (t <= pairs * 7) return 2;
+    return 1;
   }
 
   private emitHud(): void {
@@ -769,6 +793,9 @@ export class Game {
       stuck,
       level: this.levelIndex,
       levelName: this.level().name,
+      score: this.score,
+      combo: this.combo,
+      stars: this.won ? this.calcStars() : 0,
     });
   }
 
@@ -1096,10 +1123,14 @@ export class Game {
     // Üst şerit: istatistik (portrede üstte ortalanmış).
     const remaining = this.tiles.filter((t) => !t.removed).length;
     const total = this.tiles.length;
-    c.fillStyle = "#d4e8f2";
-    c.font = "bold 19px Georgia";
+    c.fillStyle = "#ffd75e";
+    c.font = "bold 18px Georgia";
     c.textAlign = "center";
-    c.fillText(`Kalan: ${remaining}/${total}   Hamle: ${this.moves}   Süre: ${Math.floor(this.seconds)} sn`, CANVAS_W / 2, 128);
+    let topLine = `Puan: ${this.score}`;
+    if (this.combo > 1 && this.comboTimer > 0) topLine += `   Combo ×${this.combo}`;
+    c.fillText(topLine, CANVAS_W / 2, 116);
+    c.fillStyle = "#d4e8f2";
+    c.fillText(`Kalan: ${remaining}/${total}   Hamle: ${this.moves}   Süre: ${Math.floor(this.seconds)} sn`, CANVAS_W / 2, 144);
 
     // Alttaki kısayollar (haznenin üstü).
     c.fillStyle = "#7f96b8";
@@ -1144,9 +1175,15 @@ export class Game {
       c.font = "bold 26px Georgia";
       c.fillStyle = "#cfe6f2";
       c.fillText("Tum taslar eslestirildi. Seviye tamamlandi!", CANVAS_W / 2, CANVAS_H / 2 - 60);
+      c.font = "bold 34px Georgia";
+      c.fillStyle = "#ffd75e";
+      const starCount = this.calcStars();
+      c.fillText("★".repeat(starCount) + "☆".repeat(3 - starCount), CANVAS_W / 2, CANVAS_H / 2 - 18);
+      c.font = "bold 19px Georgia";
       c.fillStyle = "#9fd0e0";
+      c.fillText(`Puan: ${this.score}   Hamle: ${this.moves}   Süre: ${Math.floor(this.seconds)} sn`, CANVAS_W / 2, CANVAS_H / 2 + 24);
       c.font = "bold 20px Georgia";
-      c.fillText("[Sonraki Seviye] L    [Yeniden Oyna] N", CANVAS_W / 2, CANVAS_H / 2);
+      c.fillText("[Sonraki Seviye] L    [Yeniden Oyna] N", CANVAS_W / 2, CANVAS_H / 2 + 60);
     }
   }
 

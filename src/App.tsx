@@ -44,8 +44,15 @@ export default function App() {
           <div className="win-banner">
             <div className="win-title">Başardın!</div>
             <div className="win-sub">
-              Seviye {hud?.levelName}: {hud?.moves} hamlede, {hud?.seconds}{" "}
-              saniyede tüm rünleri eşleştirdin.
+              Seviye {hud?.levelName}: {hud?.score} puanda, {hud?.moves}{" "}
+              hamlede, {hud?.seconds} saniyede tüm rünleri eşleştirdin.
+            </div>
+            <div
+              className="win-stars"
+              style={{ fontSize: 38, color: "#ffd75e", letterSpacing: 8 }}
+            >
+              {"★".repeat(hud?.stars ?? 0)}
+              {"☆".repeat(Math.max(0, 3 - (hud?.stars ?? 0)))}
             </div>
             <div className="win-actions">
               <button className="btn" onClick={() => gameRef.current?.nextLevel()}>
