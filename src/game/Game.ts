@@ -2076,44 +2076,51 @@ export class Game {
       this.drawAnimalIcon(c, t, open);
     } else {
       c.font =
-        (open ? "bold 36px " : "bold 26px ") +
+        (open ? "bold 42px " : "bold 26px ") +
         "'Segoe UI Historic','Noto Sans Old Turkic',serif";
       c.textAlign = "center";
       c.textBaseline = "middle";
       if (open && canTake) {
         const rc = RUNE_COLORS[t.symbol];
         const rg = c.createLinearGradient(0, t.sy - 15, 0, t.sy + 17);
-        rg.addColorStop(0, shade(rc, 36));
+        rg.addColorStop(0, shade(rc, 42));
         rg.addColorStop(0.5, rc);
-        rg.addColorStop(1, shade(rc, -30));
-        const glow = c.createRadialGradient(t.sx, t.sy, 2, t.sx, t.sy, 30);
+        rg.addColorStop(1, shade(rc, -36));
+        const glow = c.createRadialGradient(t.sx, t.sy, 2, t.sx, t.sy, 34);
         glow.addColorStop(0, rc);
         glow.addColorStop(1, "transparent");
-        c.globalAlpha = 0.3;
+        c.globalAlpha = 0.32;
         c.fillStyle = glow;
         c.beginPath();
-        c.arc(t.sx, t.sy, 30, 0, Math.PI * 2);
+        c.arc(t.sx, t.sy, 34, 0, Math.PI * 2);
         c.fill();
         c.globalAlpha = 1;
         c.save();
-        c.shadowColor = "rgba(0,0,0,0.6)";
-        c.shadowBlur = 3;
-        c.shadowOffsetY = 1;
-        c.fillStyle = "rgba(0,0,0,0.55)";
-        c.fillText(RUNES[t.symbol], t.sx + 1.5, t.sy + 2.5);
+        c.shadowColor = "rgba(0,0,0,0.75)";
+        c.shadowBlur = 4;
+        c.shadowOffsetY = 2;
+        c.lineJoin = "round";
+        c.lineWidth = 5;
+        c.strokeStyle = "rgba(22,28,16,0.9)";
+        c.strokeText(RUNES[t.symbol], t.sx, t.sy);
         c.fillStyle = rg;
         c.fillText(RUNES[t.symbol], t.sx, t.sy);
         c.restore();
       } else {
         const rc = RUNE_COLORS[t.symbol];
         const rg = c.createLinearGradient(0, t.sy - 15, 0, t.sy + 17);
-        rg.addColorStop(0, shade(rc, 36));
+        rg.addColorStop(0, shade(rc, 42));
         rg.addColorStop(0.5, rc);
-        rg.addColorStop(1, shade(rc, -30));
-        c.globalAlpha = 0.55;
+        rg.addColorStop(1, shade(rc, -36));
+        c.save();
+        c.lineJoin = "round";
+        c.lineWidth = 4;
+        c.strokeStyle = "rgba(22,28,16,0.8)";
+        c.strokeText(RUNES[t.symbol], t.sx, t.sy);
+        c.globalAlpha = open ? 1 : 0.5;
         c.fillStyle = rg;
         c.fillText(RUNES[t.symbol], t.sx, t.sy);
-        c.globalAlpha = 1;
+        c.restore();
       }
     }
 
@@ -2128,7 +2135,7 @@ export class Game {
         yTop + h * 0.28,
         w * 0.95,
       );
-      gA.addColorStop(0, "rgba(255,255,255,0.30)");
+      gA.addColorStop(0, "rgba(255,255,255,0.16)");
       gA.addColorStop(1, "rgba(255,255,255,0)");
       c.fillStyle = gA;
       c.beginPath();
@@ -2138,7 +2145,7 @@ export class Game {
       c.save();
       const gB = c.createLinearGradient(0, yTop + h * 0.45, 0, yTop + h);
       gB.addColorStop(0, "rgba(120,80,20,0)");
-      gB.addColorStop(1, "rgba(120,80,20,0.22)");
+      gB.addColorStop(1, "rgba(120,80,20,0.13)");
       c.fillStyle = gB;
       c.beginPath();
       c.roundRect(x + 2, yTop + 2, w - 4, h - 4, R - 1);
