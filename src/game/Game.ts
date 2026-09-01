@@ -319,26 +319,15 @@ export class Game {
 
 
   private buildLayout(): void {
-    // Temel tasarım: her hücre 2 katman taş (alt + üst). Üst katman açıktır;
-    // kalkınca alttakiler açılır. 10. seviyeden itibaren tahtanın merkez
-    // bandındaki hücrelere ekstra üst katmanlar biner: 10+ → 3 kat,
-    // 50+ → 4 kat. Ekstra katmanlar üstte açık dizilir ve ikiz çiftlerle
-    // (aynı sembolden iki açık taş) kendi aralarında eşleşir.
+    // Kademeli platform derinligi: tahta katman katman yukselir.
+    // - Kenar halkasi: 1 kat (taban, acik)
+    // - Orta bolge: 2 kat
+    // - Merkez kule: 3 kat (10+ seviyeler), 4 kat (50+ seviyeler)
+    // Cozulebilirlik icin her katman "ikiz cift" bloklari halinde kurulur:
+    // ayni sembolden iki tas. Bir cifli kaldirinca alttaki katman acilir.
     const def = this.level();
     const cells = def.cells;
-    let runes = Math.min(RUNES.length, Math.floor(cells.length / 2));
-    if (this.specialArt() === "mixed") runes = 20; // 8 mevsim + 8 hayvan + 4 rün
 
-    const symbols: number[] = [];
-    for (let s = 0; s < runes; s++) {
-      for (let k = 0; k < 4; k++) symbols.push(s);
-    }
-    for (let i = symbols.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [symbols[i], symbols[j]] = [symbols[j], symbols[i]];
-    }
-
-    // Dizimin boyutundan merkezleme.
     let cols = 0;
     let rows = 0;
     for (const [c, r] of cells) {
@@ -348,40 +337,43 @@ export class Game {
     this.layoutCols = cols + 1;
     this.layoutRows = rows + 1;
 
-    // Merkez bandı (ortadaki ~1/3 kesişim) hücreleri — ekstra katmanlar buraya biner.
-    const layers = this.levelIndex >= 49 ? 4 : this.levelIndex >= 9 ? 3 : 2;
+    // Kule derinligi ve merkez bandi.
+    const coreDepth = this.levelIndex >= 49 ? 4 : this.levelIndex >= 9 ? 3 : 2;
     const cMn = Math.max(0, Math.floor((cols + 1) / 3));
     const cMx = Math.min(cols, cols - 1 - Math.floor((cols + 1) / 3));
     const rMn = Math.max(0, Math.floor((rows + 1) / 3));
     const rMx = Math.min(rows, rows - 1 - Math.floor((rows + 1) / 3));
-    const centerCells: Array<[number, number]> = [];
-    for (const [c, r] of cells) {
-      if (c >= cMn && c <= cMx && r >= rMn && r <= rMx) centerCells.push([c, r]);
-    }
-    if (centerCells.length % 2 !== 0) centerCells.pop();
 
-    let idx = 0;
-    for (const [col, row] of cells) {
-      if (idx + 2 > symbols.length) break;
-      const s0 = symbols[idx++];
-      const s1 = symbols[idx++];
-      this.tiles.push(this.makeTile(s0, col, row, 0));
-      this.tiles.push(this.makeTile(s1, col, row, 1));
+    const isCore = (c: number, r: number) => c >= cMn && c <= cMx && r >= rMn && r <= rMx;
+    const isRing = (c: number, r: number) => c === 0 || r === 0 || c === cols || r === rows;
+    const midCount = cells.filter(([c, r]) => !isRing(c, r)).length;
+
+    // Kenar 1 kat, orta 2 kat, merkez kule coreDepth kat.
+    // Orta bolge cok kucukse tahta duz 2 kat kalir (kucuk/kapali dizilimler).
+    const depthOf = (c: number, r: number) => {
+      if (isCore(c, r)) return coreDepth;
+      if (isRing(c, r) && midCount >= 4) return 1;
+      return 2;
+    };
+    const even = <T,>(a: T[]): T[] => (a.length % 2 === 0 ? a : a.slice(0, -1));
+
+    // Her katman icin o seviyeye ulasabilen hucreler (cift sayiya yuvarlanir).
+    const layers: Array<Array<[number, number]>> = [];
+    for (let L = 0; L < coreDepth; L++) {
+      layers.push(even(cells.filter(([c, r]) => depthOf(c, r) >= L + 1)));
     }
 
-    // Merkez ekstra üst katmanlar: her ikiz çift aynı sembolden iki açık taş
-    // olarak konur, böylece üstteki taşlar kendi aralarında eşleşebilir.
-    const extraLayers = layers - 2;
-    if (extraLayers > 0 && centerCells.length >= 2) {
-      for (let L = 0; L < extraLayers; L++) {
-        const layerNo = 2 + L;
-        for (let i = 0; i + 1 < centerCells.length; i += 2) {
-          const sym = Math.floor(Math.random() * runes);
-          const [c1, r1] = centerCells[i];
-          const [c2, r2] = centerCells[i + 1];
-          this.tiles.push(this.makeTile(sym, c1, r1, layerNo));
-          this.tiles.push(this.makeTile(sym, c2, r2, layerNo));
-        }
+    let sym = Math.floor(Math.random() * RUNES.length);
+    const nextSym = () => (sym = (sym + 1) % RUNES.length);
+
+    for (let L = 0; L < layers.length; L++) {
+      const list = layers[L];
+      for (let i = 0; i + 1 < list.length; i += 2) {
+        const s = nextSym();
+        const [c1, r1] = list[i];
+        const [c2, r2] = list[i + 1];
+        this.tiles.push(this.makeTile(s, c1, r1, L));
+        this.tiles.push(this.makeTile(s, c2, r2, L));
       }
     }
   }
