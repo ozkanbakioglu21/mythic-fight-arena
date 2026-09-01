@@ -1127,6 +1127,7 @@ export class Game {
   /** 201. seviye (Hayvanlar) taş yüzü çizimi. t.symbol % 8:
    *  0 at · 1 koyun · 2 kartal · 3 kurt · 4 geyik · 5 boğa ·
    *  6 tilki · 7 yılan. */
+
   private drawAnimalIcon(
     c: CanvasRenderingContext2D,
     t: Tile,
@@ -1144,8 +1145,12 @@ export class Game {
     switch (t.symbol % 8) {
       case 0: {
         // At (kafa profili)
-        c.strokeStyle = "#5a3a1c";
-        c.fillStyle = "#a06a3a";
+        const gg0 = c.createLinearGradient(0, cy - 16, 0, cy + 16);
+        gg0.addColorStop(0, "#c8915c");
+        gg0.addColorStop(0.5, "#a06a3a");
+        gg0.addColorStop(1, "#6e4420");
+        c.strokeStyle = "#4a2e14";
+        c.fillStyle = gg0;
         c.lineWidth = 2.5;
         c.beginPath();
         c.moveTo(cx - 8, cy + 16);
@@ -1158,7 +1163,15 @@ export class Game {
         c.closePath();
         c.fill();
         c.stroke();
-        c.strokeStyle = "#6b4423";
+        c.fillStyle = "#2a1a0e";
+        c.beginPath();
+        c.arc(cx + 3, cy - 2, 1.4, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = "#fff";
+        c.beginPath();
+        c.arc(cx + 3.4, cy - 2.4, 0.5, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = "#5a3a16";
         c.lineWidth = 2;
         c.beginPath();
         c.moveTo(cx - 8, cy - 2);
@@ -1168,7 +1181,11 @@ export class Game {
       }
       case 1: {
         // Koyun (yün + kafa)
-        c.fillStyle = "#f7f2e6";
+        const wool = c.createRadialGradient(cx - 3, cy - 3, 2, cx, cy, 16);
+        wool.addColorStop(0, "#ffffff");
+        wool.addColorStop(0.6, "#f3edda");
+        wool.addColorStop(1, "#d8cdb0");
+        c.fillStyle = wool;
         c.beginPath();
         c.arc(cx, cy + 2, 12, 0, Math.PI * 2);
         c.fill();
@@ -1178,28 +1195,50 @@ export class Game {
         c.beginPath();
         c.arc(cx + 8, cy + 2, 6, 0, Math.PI * 2);
         c.fill();
-        c.fillStyle = "#d9b48a";
+        const head = c.createLinearGradient(0, cy - 16, 0, cy - 4);
+        head.addColorStop(0, "#e2bd95");
+        head.addColorStop(1, "#b98d5e");
+        c.fillStyle = head;
         c.beginPath();
         c.ellipse(cx, cy - 10, 5, 6, 0, 0, Math.PI * 2);
         c.fill();
         c.fillStyle = "#3a2a1a";
         c.beginPath();
-        c.arc(cx + 2, cy - 11, 1.2, 0, Math.PI * 2);
+        c.arc(cx + 2, cy - 11, 1.3, 0, Math.PI * 2);
         c.fill();
+        c.fillStyle = "#fff";
+        c.beginPath();
+        c.arc(cx + 2.4, cy - 11.4, 0.5, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = "#e2bd95";
         c.beginPath();
         c.arc(cx - 9, cy - 11, 2, 0, Math.PI * 2);
         c.fill();
         c.beginPath();
         c.arc(cx + 8, cy - 11, 2, 0, Math.PI * 2);
         c.fill();
+        c.fillStyle = "#b98d5e";
+        c.beginPath();
+        c.arc(cx - 11, cy - 11.5, 1, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.arc(cx + 6, cy - 11.5, 1, 0, Math.PI * 2);
+        c.fill();
         break;
       }
       case 2: {
-        // Kartal (kanatlı kuş ikonu)
-        c.fillStyle = "#7a4a1a";
+        // Kartal (kanatlı kuş)
+        const body = c.createLinearGradient(0, cy - 8, 0, cy + 12);
+        body.addColorStop(0, "#8a5a2a");
+        body.addColorStop(1, "#5a360f");
+        c.fillStyle = body;
         c.beginPath();
         c.ellipse(cx, cy + 2, 5, 9, 0, 0, Math.PI * 2);
         c.fill();
+        const wing = c.createLinearGradient(0, cy - 10, 0, cy + 6);
+        wing.addColorStop(0, "#6b4418");
+        wing.addColorStop(1, "#3c2408");
+        c.fillStyle = wing;
         c.beginPath();
         c.moveTo(cx - 3, cy - 2);
         c.lineTo(cx - 18, cy - 8);
@@ -1212,28 +1251,43 @@ export class Game {
         c.lineTo(cx + 8, cy + 4);
         c.closePath();
         c.fill();
-        c.fillStyle = "#5a3412";
+        c.fillStyle = "#6b4418";
         c.beginPath();
         c.arc(cx, cy - 10, 3, 0, Math.PI * 2);
         c.fill();
-        c.fillStyle = "#ffcf33";
+        const beak = c.createLinearGradient(0, cy - 14, 0, cy - 6);
+        beak.addColorStop(0, "#ffd86b");
+        beak.addColorStop(1, "#f0a020");
+        c.fillStyle = beak;
         c.beginPath();
         c.moveTo(cx, cy - 8);
-        c.lineTo(cx + 4, cy - 12);
-        c.lineTo(cx, cy - 13);
+        c.lineTo(cx + 5, cy - 13);
+        c.lineTo(cx, cy - 14);
         c.closePath();
+        c.fill();
+        c.fillStyle = "#fff";
+        c.beginPath();
+        c.arc(cx - 1, cy - 11, 0.8, 0, Math.PI * 2);
         c.fill();
         break;
       }
       case 3: {
         // Kurt (kafa)
-        c.fillStyle = "#8a959f";
+        const face = c.createLinearGradient(0, cy - 16, 0, cy + 8);
+        face.addColorStop(0, "#aab4be");
+        face.addColorStop(0.5, "#8a959f");
+        face.addColorStop(1, "#646e79");
+        c.fillStyle = face;
         c.beginPath();
         c.moveTo(cx - 10, cy + 2);
         c.lineTo(cx, cy - 14);
         c.lineTo(cx + 10, cy + 2);
         c.closePath();
         c.fill();
+        const ear = c.createLinearGradient(0, cy - 18, 0, cy - 6);
+        ear.addColorStop(0, "#aab4be");
+        ear.addColorStop(1, "#7a848f");
+        c.fillStyle = ear;
         c.beginPath();
         c.moveTo(cx - 6, cy - 6);
         c.lineTo(cx - 10, cy - 18);
@@ -1246,9 +1300,16 @@ export class Game {
         c.lineTo(cx + 1, cy - 10);
         c.closePath();
         c.fill();
-        c.fillStyle = "#5f6975";
+        const muzzle = c.createLinearGradient(0, cy + 2, 0, cy + 10);
+        muzzle.addColorStop(0, "#737d88");
+        muzzle.addColorStop(1, "#4d5660");
+        c.fillStyle = muzzle;
         c.beginPath();
         c.ellipse(cx, cy + 5, 7, 4, 0, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = "#2c343a";
+        c.beginPath();
+        c.arc(cx, cy + 6, 1.6, 0, Math.PI * 2);
         c.fill();
         c.fillStyle = "#fff";
         c.beginPath();
@@ -1257,11 +1318,22 @@ export class Game {
         c.beginPath();
         c.arc(cx + 4, cy - 3, 1.6, 0, Math.PI * 2);
         c.fill();
+        c.fillStyle = "#2c343a";
+        c.beginPath();
+        c.arc(cx - 4, cy - 3, 0.8, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.arc(cx + 4, cy - 3, 0.8, 0, Math.PI * 2);
+        c.fill();
         break;
       }
       case 4: {
         // Geyik (kafa + boynuz)
-        c.fillStyle = "#c2844a";
+        const head = c.createLinearGradient(0, cy - 8, 0, cy + 12);
+        head.addColorStop(0, "#d79a5c");
+        head.addColorStop(0.5, "#c2844a");
+        head.addColorStop(1, "#8f5a2a");
+        c.fillStyle = head;
         c.beginPath();
         c.ellipse(cx, cy + 3, 7, 9, 0, 0, Math.PI * 2);
         c.fill();
@@ -1281,7 +1353,10 @@ export class Game {
         c.moveTo(cx + 6, cy - 12);
         c.lineTo(cx + 3, cy - 17);
         c.stroke();
-        c.fillStyle = "#a06a3a";
+        const ear = c.createLinearGradient(0, cy - 6, 0, cy + 2);
+        ear.addColorStop(0, "#c2844a");
+        ear.addColorStop(1, "#8f5a2a");
+        c.fillStyle = ear;
         c.beginPath();
         c.ellipse(cx - 8, cy - 2, 2.5, 5, -0.3, 0, Math.PI * 2);
         c.fill();
@@ -1295,22 +1370,39 @@ export class Game {
         c.beginPath();
         c.arc(cx + 2, cy + 1, 1.2, 0, Math.PI * 2);
         c.fill();
+        c.fillStyle = "#fff";
+        c.beginPath();
+        c.arc(cx - 1.6, cy + 0.6, 0.4, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.arc(cx + 2.4, cy + 0.6, 0.4, 0, Math.PI * 2);
+        c.fill();
         break;
       }
       case 5: {
-        // Boğa (kafa + boynuzlar)
-        c.fillStyle = "#8a4422";
+        // Boğa (kafa + boynuz)
+        const head = c.createLinearGradient(0, cy - 8, 0, cy + 10);
+        head.addColorStop(0, "#a45a2c");
+        head.addColorStop(0.5, "#8a4422");
+        head.addColorStop(1, "#5f2c12");
+        c.fillStyle = head;
         c.beginPath();
         c.ellipse(cx, cy + 2, 11, 8, 0, 0, Math.PI * 2);
         c.fill();
-        c.fillStyle = "#6b3418";
+        const ear = c.createLinearGradient(0, cy - 2, 0, cy + 6);
+        ear.addColorStop(0, "#7a3a1a");
+        ear.addColorStop(1, "#51270f");
+        c.fillStyle = ear;
         c.beginPath();
         c.ellipse(cx - 12, cy + 1, 2, 4, -0.4, 0, Math.PI * 2);
         c.fill();
         c.beginPath();
         c.ellipse(cx + 12, cy + 1, 2, 4, 0.4, 0, Math.PI * 2);
         c.fill();
-        c.strokeStyle = "#e0d8c0";
+        const horn = c.createLinearGradient(0, cy - 14, 0, cy - 2);
+        horn.addColorStop(0, "#f5f0e0");
+        horn.addColorStop(1, "#c9bfa0");
+        c.strokeStyle = horn;
         c.lineWidth = 2.5;
         c.beginPath();
         c.moveTo(cx - 8, cy - 3);
@@ -1327,11 +1419,26 @@ export class Game {
         c.beginPath();
         c.arc(cx + 4, cy + 1, 1.2, 0, Math.PI * 2);
         c.fill();
+        c.fillStyle = "#fff";
+        c.beginPath();
+        c.arc(cx - 3.6, cy + 0.6, 0.4, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.arc(cx + 4.4, cy + 0.6, 0.4, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = "#2a1a0e";
+        c.beginPath();
+        c.ellipse(cx - 1, cy + 5, 3, 1.6, 0, 0, Math.PI * 2);
+        c.fill();
         break;
       }
       case 6: {
         // Tilki (kafa)
-        c.fillStyle = "#e8912f";
+        const face = c.createLinearGradient(0, cy - 8, 0, cy + 10);
+        face.addColorStop(0, "#f7a648");
+        face.addColorStop(0.5, "#e8912f");
+        face.addColorStop(1, "#c26f1c");
+        c.fillStyle = face;
         c.beginPath();
         c.moveTo(cx, cy - 4);
         c.lineTo(cx + 8, cy + 8);
@@ -1345,7 +1452,14 @@ export class Game {
         c.lineTo(cx - 3, cy + 8);
         c.closePath();
         c.fill();
-        c.fillStyle = "#c26f1c";
+        c.fillStyle = "#3a2410";
+        c.beginPath();
+        c.arc(cx, cy + 4, 1, 0, Math.PI * 2);
+        c.fill();
+        const ear = c.createLinearGradient(0, cy - 8, 0, cy - 1);
+        ear.addColorStop(0, "#f0a03a");
+        ear.addColorStop(1, "#c05f12");
+        c.fillStyle = ear;
         c.beginPath();
         c.moveTo(cx - 6, cy + 2);
         c.lineTo(cx - 9, cy - 8);
@@ -1358,18 +1472,29 @@ export class Game {
         c.lineTo(cx + 2, cy - 2);
         c.closePath();
         c.fill();
-        c.fillStyle = "#3a2410";
+        c.fillStyle = "#2a1508";
         c.beginPath();
-        c.arc(cx - 4, cy + 2, 1.4, 0, Math.PI * 2);
+        c.arc(cx - 4, cy + 2, 1.3, 0, Math.PI * 2);
         c.fill();
         c.beginPath();
-        c.arc(cx + 4, cy + 2, 1.4, 0, Math.PI * 2);
+        c.arc(cx + 4, cy + 2, 1.3, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = "#fff";
+        c.beginPath();
+        c.arc(cx - 3.6, cy + 1.6, 0.45, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.arc(cx + 4.4, cy + 1.6, 0.45, 0, Math.PI * 2);
         c.fill();
         break;
       }
       default: {
         // Yılan (7) S kıvrım
-        c.strokeStyle = "#4a9e6a";
+        const body = c.createLinearGradient(cx - 16, 0, cx + 16, 0);
+        body.addColorStop(0, "#3f8b5c");
+        body.addColorStop(0.5, "#57b276");
+        body.addColorStop(1, "#3f8b5c");
+        c.strokeStyle = body;
         c.lineWidth = 5;
         c.beginPath();
         c.moveTo(cx - 14, cy + 12);
@@ -1377,7 +1502,16 @@ export class Game {
         c.quadraticCurveTo(cx - 16, cy - 6, cx + 2, cy - 8);
         c.quadraticCurveTo(cx + 12, cy - 10, cx + 8, cy - 13);
         c.stroke();
-        c.fillStyle = "#4a9e6a";
+        c.strokeStyle = "rgba(255,255,255,0.35)";
+        c.lineWidth = 1.2;
+        c.beginPath();
+        c.moveTo(cx - 11, cy + 9);
+        c.quadraticCurveTo(cx + 8, cy + 8, cx - 2, cy + 3);
+        c.stroke();
+        const hd = c.createLinearGradient(0, cy - 16, 0, cy - 10);
+        hd.addColorStop(0, "#5cb881");
+        hd.addColorStop(1, "#3f8b5c");
+        c.fillStyle = hd;
         c.beginPath();
         c.arc(cx + 8, cy - 13, 4, 0, Math.PI * 2);
         c.fill();
@@ -1393,13 +1527,19 @@ export class Game {
         c.beginPath();
         c.arc(cx + 9, cy - 14, 1.2, 0, Math.PI * 2);
         c.fill();
+        c.fillStyle = "#15241a";
+        c.beginPath();
+        c.arc(cx + 9.3, cy - 14.3, 0.55, 0, Math.PI * 2);
+        c.fill();
         break;
       }
     }
     c.restore();
   }
 
-  /** 101. seviye (Mevsimler & Ağaçlar) taş yüzü çizimi. t.symbol % 8:
+
+
+  /** 100+. seviye taş yüzü çizimi. t.symbol % 8:
    *  0 kar · 1 çiçek · 2 güneş · 3 yaprak · 4 çam · 5 yapraklı ağaç ·
    *  6 meyve ağacı · 7 kiraz çiçeği ağacı. */
   private drawSeasonIcon(
@@ -1421,14 +1561,18 @@ export class Game {
     switch (t.symbol % 8) {
       case 0: {
         // Kar (kış)
-        c.fillStyle = "#eef6ff";
+        const body = c.createRadialGradient(cx - 4, cy + 2, 2, cx, cy + 8, 22);
+        body.addColorStop(0, "#ffffff");
+        body.addColorStop(0.5, "#eaf3ff");
+        body.addColorStop(1, "#bfe0ff");
+        c.fillStyle = body;
         c.beginPath();
         c.moveTo(cx - 20, cy + 16);
         c.quadraticCurveTo(cx - 14, cy + 2, cx, cy + 8);
         c.quadraticCurveTo(cx + 14, cy + 16, cx + 20, cy + 16);
         c.closePath();
         c.fill();
-        c.strokeStyle = "#bfe0ff";
+        c.strokeStyle = "#9fc8ee";
         c.lineWidth = 2;
         for (let i = -1; i <= 1; i++) {
           c.beginPath();
@@ -1439,22 +1583,38 @@ export class Game {
           c.lineTo(cx + i * 14 - 5, cy - 4);
           c.stroke();
         }
+        c.fillStyle = "#ffffff";
+        c.beginPath();
+        c.arc(cx - 8, cy + 4, 2.6, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.arc(cx + 6, cy + 10, 1.8, 0, Math.PI * 2);
+        c.fill();
         break;
       }
       case 1: {
         // Çiçek (ilkbahar)
+        c.strokeStyle = "#3a7d3a";
+        c.lineWidth = 2.5;
         c.beginPath();
         c.moveTo(cx, cy + 16);
         c.lineTo(cx, cy - 4);
         c.stroke();
-        const petals = ["#e66aa0", "#ffad4d", "#c86ae6", "#7a9cff"];
+        const petals = ["#ee7fb0", "#ffb84d", "#d07af0", "#8a9cff"];
         for (let i = 0; i < 4; i++) {
-          c.fillStyle = petals[i];
+          const pg = c.createRadialGradient(cx + (i - 1.5) * 11, cy - 12, 1, cx + (i - 1.5) * 11, cy - 10, 6);
+          pg.addColorStop(0, "#fff0f6");
+          pg.addColorStop(0.5, petals[i]);
+          pg.addColorStop(1, shade(petals[i], -25));
+          c.fillStyle = pg;
           c.beginPath();
           c.arc(cx + (i - 1.5) * 11, cy - 10, 6, 0, Math.PI * 2);
           c.fill();
         }
-        c.fillStyle = "#fff3c4";
+        const center = c.createRadialGradient(cx, cy - 10, 0.5, cx, cy - 10, 3);
+        center.addColorStop(0, "#fffbe0");
+        center.addColorStop(1, "#f5c34a");
+        c.fillStyle = center;
         c.beginPath();
         c.arc(cx, cy - 10, 3, 0, Math.PI * 2);
         c.fill();
@@ -1462,11 +1622,15 @@ export class Game {
       }
       case 2: {
         // Güneş (yaz)
-        c.fillStyle = "#ffcf33";
+        const sun = c.createRadialGradient(cx - 3, cy - 3, 1, cx, cy, 14);
+        sun.addColorStop(0, "#fffbe0");
+        sun.addColorStop(0.55, "#ffcf33");
+        sun.addColorStop(1, "#f0971a");
+        c.fillStyle = sun;
         c.beginPath();
         c.arc(cx, cy, 12, 0, Math.PI * 2);
         c.fill();
-        c.strokeStyle = "#ffb020";
+        c.strokeStyle = "#f0a020";
         c.lineWidth = 4;
         for (let i = 0; i < 8; i++) {
           const a = (i / 8) * Math.PI * 2;
@@ -1475,16 +1639,29 @@ export class Game {
           c.lineTo(cx + Math.cos(a) * 24, cy + Math.sin(a) * 24);
           c.stroke();
         }
+        c.fillStyle = "rgba(255,255,255,0.8)";
+        c.beginPath();
+        c.arc(cx - 4, cy - 4, 2.6, 0, Math.PI * 2);
+        c.fill();
         break;
       }
       case 3: {
         // Yaprak (sonbahar)
         const cols = ["#e8a33d", "#d06b2f", "#b8332f"];
         for (let i = 0; i < 3; i++) {
-          c.fillStyle = cols[i];
+          const lg = c.createLinearGradient(0, cy - 4, 0, cy + 6);
+          lg.addColorStop(0, shade(cols[i], 20));
+          lg.addColorStop(1, shade(cols[i], -30));
+          c.fillStyle = lg;
           c.beginPath();
           c.ellipse(cx - 14 + i * 14, cy + 2 - i * 2, 7, 4.5, -0.5 + i * 0.3, 0, Math.PI * 2);
           c.fill();
+          c.strokeStyle = "rgba(90,40,10,0.4)";
+          c.lineWidth = 1;
+          c.beginPath();
+          c.moveTo(cx - 14 + i * 14 - 5, cy + 2 - i * 2);
+          c.lineTo(cx - 14 + i * 14 + 5, cy + 2 - i * 2 + 1);
+          c.stroke();
         }
         break;
       }
@@ -1493,7 +1670,12 @@ export class Game {
         for (let i = 0; i < 3; i++) {
           const yy = cy + 16 - i * 9;
           const w = 22 - i * 6;
-          c.fillStyle = i % 2 ? "#1f7a3c" : "#2fa05a";
+          const cc = i % 2 ? "#178c3c" : "#2fa05a";
+          const cg = c.createLinearGradient(0, yy - 14, 0, yy + 6);
+          cg.addColorStop(0, shade(cc, 26));
+          cg.addColorStop(0.5, cc);
+          cg.addColorStop(1, shade(cc, -30));
+          c.fillStyle = cg;
           c.beginPath();
           c.moveTo(cx, yy - 12);
           c.lineTo(cx + w, yy + 4);
@@ -1501,21 +1683,33 @@ export class Game {
           c.closePath();
           c.fill();
         }
-        c.fillStyle = "#6b4a2a";
+        const tg = c.createLinearGradient(0, cy + 16, 0, cy + 24);
+        tg.addColorStop(0, "#7a5a30");
+        tg.addColorStop(1, "#5a3d1a");
+        c.fillStyle = tg;
         c.fillRect(cx - 3, cy + 16, 6, 8);
         break;
       }
       case 5: {
         // Yapraklı ağaç
+        c.strokeStyle = "#6b4a2a";
+        c.lineWidth = 3;
         c.beginPath();
         c.moveTo(cx, cy + 22);
         c.lineTo(cx, cy + 4);
         c.stroke();
-        c.fillStyle = "#2f9e5f";
+        const crown = c.createRadialGradient(cx - 4, cy - 6, 2, cx, cy - 2, 14);
+        crown.addColorStop(0, "#5ad489");
+        crown.addColorStop(0.6, "#2f9e5f");
+        crown.addColorStop(1, "#187a41");
+        c.fillStyle = crown;
         c.beginPath();
         c.arc(cx, cy - 2, 13, 0, Math.PI * 2);
         c.fill();
-        c.fillStyle = "#3cc873";
+        const bloom = c.createRadialGradient(cx - 6, cy - 8, 1, cx - 6, cy - 6, 6);
+        bloom.addColorStop(0, "#8fe8ac");
+        bloom.addColorStop(1, "#3cc873");
+        c.fillStyle = bloom;
         c.beginPath();
         c.arc(cx - 6, cy - 6, 6, 0, Math.PI * 2);
         c.fill();
@@ -1523,16 +1717,25 @@ export class Game {
       }
       case 6: {
         // Meyve ağacı
+        c.strokeStyle = "#6b4a2a";
+        c.lineWidth = 3;
         c.beginPath();
         c.moveTo(cx, cy + 22);
         c.lineTo(cx, cy + 6);
         c.stroke();
-        c.fillStyle = "#2f9e5f";
+        const crown = c.createRadialGradient(cx - 4, cy - 4, 2, cx, cy, 13);
+        crown.addColorStop(0, "#5ad489");
+        crown.addColorStop(0.6, "#2f9e5f");
+        crown.addColorStop(1, "#187a41");
+        c.fillStyle = crown;
         c.beginPath();
         c.arc(cx, cy, 12, 0, Math.PI * 2);
         c.fill();
-        c.fillStyle = "#e23030";
         for (const [fx, fy] of [[-6, -4], [4, -7], [0, 5], [7, 3]] as Array<[number, number]>) {
+          const fg = c.createRadialGradient(cx + fx - 1, cy + fy - 1, 0.5, cx + fx, cy + fy, 3);
+          fg.addColorStop(0, "#ff9d9d");
+          fg.addColorStop(1, "#c21f1f");
+          c.fillStyle = fg;
           c.beginPath();
           c.arc(cx + fx, cy + fy, 3, 0, Math.PI * 2);
           c.fill();
@@ -1541,15 +1744,24 @@ export class Game {
       }
       default: {
         // Kiraz çiçeği ağacı (7)
+        c.strokeStyle = "#5c4433";
+        c.lineWidth = 3;
         c.beginPath();
         c.moveTo(cx, cy + 22);
         c.lineTo(cx, cy + 6);
         c.stroke();
-        c.fillStyle = "#f0a0c0";
+        const crown = c.createRadialGradient(cx - 4, cy - 5, 2, cx, cy - 1, 14);
+        crown.addColorStop(0, "#ffdcec");
+        crown.addColorStop(0.6, "#f0a0c0");
+        crown.addColorStop(1, "#d0709a");
+        c.fillStyle = crown;
         c.beginPath();
         c.arc(cx, cy - 1, 13, 0, Math.PI * 2);
         c.fill();
-        c.fillStyle = "#ffd0e6";
+        const bloom = c.createRadialGradient(cx - 6, cy - 8, 1, cx - 6, cy - 6, 7);
+        bloom.addColorStop(0, "#ffffff");
+        bloom.addColorStop(1, "#ffb8d6");
+        c.fillStyle = bloom;
         c.beginPath();
         c.arc(cx - 6, cy - 6, 7, 0, Math.PI * 2);
         c.fill();
@@ -1564,6 +1776,7 @@ export class Game {
     }
     c.restore();
   }
+
 
   private drawTile(
     c: CanvasRenderingContext2D,
