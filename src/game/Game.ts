@@ -802,11 +802,13 @@ export class Game {
       m.textAlign = "center";
 
       // ---- Uzak dağ tepeleri (silüet) ----
-      const ridge = (baseY: number, amp: number, seed: number) => {
+      // Keskin cok katmanli uzak dag sirtlari (iki harmonik uzerine biner).
+      const ridge = (baseY: number, amp: number, seed: number, sharp: number) => {
         m.beginPath();
-        m.moveTo(0, baseY + 40);
-        for (let x = 0; x <= CANVAS_W; x += 30) {
-          const y = baseY - Math.abs(Math.sin((x + seed) * 0.006) * amp) - amp * 0.4;
+        m.moveTo(0, baseY + 60);
+        for (let x = 0; x <= CANVAS_W; x += 20) {
+          const w = (x + seed) * 0.006;
+          const y = baseY - Math.abs(Math.sin(w)) * amp - Math.abs(Math.sin(w * 2.3 + 1.7)) * amp * sharp;
           m.lineTo(x, y);
         }
         m.lineTo(CANVAS_W, CANVAS_H);
@@ -815,13 +817,13 @@ export class Game {
         m.fill();
       };
       m.save();
-      m.globalAlpha = 0.5;
-      m.fillStyle = "rgba(140,165,190,0.14)";
-      ridge(420, 60, 40);
-      m.fillStyle = "rgba(120,150,175,0.18)";
-      ridge(505, 45, 130);
-      m.fillStyle = "rgba(100,130,155,0.22)";
-      ridge(590, 38, 210);
+      m.globalAlpha = 0.55;
+      m.fillStyle = "rgba(150,175,200,0.16)";
+      ridge(398, 76, 40, 0.6);
+      m.fillStyle = "rgba(130,160,185,0.20)";
+      ridge(508, 58, 130, 0.5);
+      m.fillStyle = "rgba(110,140,165,0.24)";
+      ridge(618, 48, 210, 0.45);
       m.restore();
 
       // ---- Gök bayrağı / tuğ (solda) ----
@@ -901,6 +903,58 @@ export class Game {
       m.quadraticCurveTo(fireX + 4, fireY - 18, fireX + 10, fireY);
       m.closePath();
       m.fill();
+      m.restore();
+
+      // ---- Bozkır çimenleri (rüzgârda eğilen ot demetleri) ----
+      m.save();
+      m.globalAlpha = 0.4;
+      m.lineWidth = 1.6;
+      m.strokeStyle = "rgba(120,145,95,0.45)";
+      const grass = (bx: number, baseY: number) => {
+        for (let k = 0; k < 6; k++) {
+          m.beginPath();
+          const gx = bx + (k - 2.5) * 9;
+          m.moveTo(gx, baseY);
+          m.quadraticCurveTo(gx + 3, baseY - 9, gx + 1 + (k % 2) * 2, baseY - 15 - (k % 3) * 3);
+          m.stroke();
+        }
+      };
+      for (let i = 0; i < 6; i++) grass(60 + i * 28, 1216 + (i % 2) * 6);
+      for (let i = 0; i < 6; i++) grass(CANVAS_W - 210 + i * 28, 1210 + (i % 2) * 8);
+      m.restore();
+
+      // ---- Gökyüzünde süzülen Göktürk kartalı (kanat açık) ----
+      m.save();
+      m.globalAlpha = 0.5;
+      m.fillStyle = "rgba(22,28,40,0.45)";
+      const eagle = (cx: number, cy: number, su: number) => {
+        m.beginPath();
+        m.moveTo(cx, cy - 14 * su);
+        m.quadraticCurveTo(cx + 3 * su, cy - 8 * su, cx + 9 * su, cy - 3 * su);
+        m.lineTo(cx + 7 * su, cy + 3 * su);
+        m.lineTo(cx + 11 * su, cy + 12 * su);
+        m.lineTo(cx + 4 * su, cy + 8 * su);
+        m.lineTo(cx, cy + 10 * su);
+        m.lineTo(cx - 4 * su, cy + 8 * su);
+        m.lineTo(cx - 11 * su, cy + 12 * su);
+        m.lineTo(cx - 7 * su, cy + 3 * su);
+        m.lineTo(cx - 9 * su, cy - 3 * su);
+        m.closePath();
+        m.fill();
+        m.beginPath();
+        m.moveTo(cx - 7 * su, cy - 4 * su);
+        m.quadraticCurveTo(cx - 30 * su, cy - 24 * su, cx - 42 * su, cy - 10 * su);
+        m.quadraticCurveTo(cx - 27 * su, cy - 7 * su, cx - 9 * su, cy + 1 * su);
+        m.closePath();
+        m.fill();
+        m.beginPath();
+        m.moveTo(cx + 7 * su, cy - 4 * su);
+        m.quadraticCurveTo(cx + 30 * su, cy - 24 * su, cx + 42 * su, cy - 10 * su);
+        m.quadraticCurveTo(cx + 27 * su, cy - 7 * su, cx + 9 * su, cy + 1 * su);
+        m.closePath();
+        m.fill();
+      };
+      eagle(CANVAS_W - 150, 210, 1);
       m.restore();
 
       // ---- Zayıf arka plan rünleri (su izi) ----
