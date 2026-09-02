@@ -555,6 +555,7 @@ export class Game {
     if (this.tiles.every((t) => t.removed)) {
       this.won = true;
       this.sfx("win");
+      this.recordProgress();
       if (this.shuffleCount === 0) {
         this.score += 500;
         this.floats.push({ x: CANVAS_W / 2, y: CANVAS_H / 2 - 40, life: 1.4, max: 1.4, text: "Temiz Zafer! +500", color: "#ffd75e" });
@@ -954,6 +955,21 @@ export class Game {
       c.fillStyle = isB ? "#ffe9a8" : "#e8b8a6";
       c.fillText(labels[id], x + widths[i] / 2, y + 1);
       x += widths[i] + 8;
+    }
+  }
+
+  private recordProgress(): void {
+    try {
+      const stars = this.calcStars();
+      const sec = Math.floor(this.seconds);
+      const skey = 'otuken_' + this.levelIndex + '_stars';
+      const bkey = 'otuken_' + this.levelIndex + '_best';
+      const prevStars = Number(localStorage.getItem(skey) || '0');
+      const prevBest = Number(localStorage.getItem(bkey) || '0');
+      if (stars > prevStars) localStorage.setItem(skey, String(stars));
+      if (prevBest === 0 || sec < prevBest) localStorage.setItem(bkey, String(sec));
+    } catch {
+      /* storage unavailable */
     }
   }
 
@@ -1441,6 +1457,19 @@ export class Game {
       c.fillText(`Puan: ${this.score}   Hamle: ${this.moves}   Süre: ${Math.floor(this.seconds)} sn`, CANVAS_W / 2, CANVAS_H / 2 + 24);
       c.font = "bold 20px Georgia";
       c.fillText("[Sonraki Seviye] L    [Yeniden Oyna] N", CANVAS_W / 2, CANVAS_H / 2 + 60);
+      let bestLine = "";
+      try {
+        const b = localStorage.getItem("otuken_" + this.levelIndex + "_best");
+        const st = localStorage.getItem("otuken_" + this.levelIndex + "_stars");
+        if (b) {
+          bestLine = "En iyi: " + b + " sn" + (st ? "  \u2605".repeat(Number(st)) : "");
+        }
+      } catch { /* ignore */ }
+      if (bestLine) {
+        c.font = "bold 17px Georgia";
+        c.fillStyle = "#ffd75e";
+        c.fillText(bestLine, CANVAS_W / 2, CANVAS_H / 2 + 92);
+      }
     }
   }
 
