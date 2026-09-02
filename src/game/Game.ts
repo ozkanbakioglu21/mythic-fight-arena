@@ -264,6 +264,7 @@ export class Game {
   private shuffleCount = 0;
   private maxShuffles = 3;
   private hintIds: number[] = [];
+  private audio: AudioContext | null = null;
 
   onHud?: (h: HudState) => void;
 
@@ -465,6 +466,7 @@ export class Game {
     if (b) b.removed = false;
     this.selectedId = null;
     this.moves = Math.max(0, this.moves - 1);
+    this.sfx("undo");
     this.emitHud();
   }
 
@@ -544,11 +546,15 @@ export class Game {
     } else if (this.tray.length >= this.maxTray()) {
       // Hazne doldu: oyuncu kaybeder.
       this.lost = true;
+      this.sfx("lose");
+    } else {
+      this.sfx("pick");
     }
 
     // Kazanma.
     if (this.tiles.every((t) => t.removed)) {
       this.won = true;
+      this.sfx("win");
       if (this.shuffleCount === 0) {
         this.score += 500;
         this.floats.push({ x: CANVAS_W / 2, y: CANVAS_H / 2 - 40, life: 1.4, max: 1.4, text: "Temiz Zafer! +500", color: "#ffd75e" });
@@ -715,6 +721,7 @@ export class Game {
   /** Haznedeki 4 taşı parçalara ayırıp patlatır ve hazneyi boşaltır. */
     /** Haznedeki pairIdx ve lastIdx slotlarindaki iki tasi kirar. */
   private breakPair(a: number, b: number): void {
+    this.sfx("match");
     const color = RUNE_COLORS;
     if (a > b) {
       const t = a;
@@ -775,12 +782,14 @@ export class Game {
     }
     remaining.forEach((t, i) => (t.symbol = syms[i]));
     this.shuffleCount++;
+    this.sfx("shuffle");
     this.hintIds = [];
     this.emitHud();
   }
 
   hint(): void {
     if (this.won || this.lost) return;
+    this.sfx("hint");
     this.hintIds = [];
     const usable = (t: Tile) => !t.removed && this.isOpen(t) && this.sideFree(t);
     // Once haznedeki tek tasa karsi acik esi var mi? (en dogrudan hamle)
@@ -820,6 +829,58 @@ export class Game {
       c.roundRect(t.sx - TILE_W / 2 - 5, t.sy - TILE_H / 2 - 5, TILE_W + 10, TILE_H + 10, 12);
       c.stroke();
       c.restore();
+    }
+  }
+
+  private ensureAudio(): AudioContext | null {
+    if (!this.audio) {
+      const AC =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AC) return null;
+      this.audio = new AC();
+    }
+    if (this.audio.state === "suspended") void this.audio.resume();
+    return this.audio;
+  }
+
+  private tone(freq: number, dur: number, type: OscillatorType, vol = 0.2, slideTo?: number): void {
+    const ac = this.audio || this.ensureAudio();
+    if (!ac) return;
+    const osc = ac.createOscillator();
+    const g = ac.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ac.currentTime);
+    if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, ac.currentTime + dur);
+    g.gain.setValueAtTime(0.0001, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(vol, ac.currentTime + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + dur);
+    osc.connect(g);
+    g.connect(ac.destination);
+    osc.start();
+    osc.stop(ac.currentTime + dur + 0.03);
+  }
+
+  private sfx(name: string): void {
+    this.audio || this.ensureAudio();
+    switch (name) {
+      case "pick": this.tone(540, 0.08, "triangle", 0.12); break;
+      case "undo": this.tone(320, 0.14, "triangle", 0.12, 200); break;
+      case "hint": this.tone(880, 0.12, "sine", 0.14, 1240); break;
+      case "shuffle":
+        this.tone(180, 0.16, "sawtooth", 0.1, 120);
+        setTimeout(() => this.tone(230, 0.12, "sawtooth", 0.08), 120);
+        break;
+      case "lose": this.tone(320, 0.5, "sawtooth", 0.12, 130); break;
+      case "match":
+        this.tone(660, 0.22, "sine", 0.18, 990);
+        this.tone(330, 0.14, "triangle", 0.09, 440);
+        break;
+      case "win":
+        [523, 659, 784, 1046].forEach((f, i) =>
+          setTimeout(() => this.tone(f, 0.28, "triangle", 0.18), i * 110),
+        );
+        break;
     }
   }
 
