@@ -1649,123 +1649,138 @@ export class Game {
     const bx = t.sx;
     const by = t.sy;
     const kind = t.symbol;
-    const rc = tileColor(kind);
     c.save();
-    if (!open) c.globalAlpha = 0.55;
-    else if (!canTake) c.globalAlpha = 0.85;
+    if (!open) c.globalAlpha = 0.5;
+    else if (!canTake) c.globalAlpha = 0.8;
 
-    // Alinabilir taslarda hafif iltihap.
+    // Alinabilir taslarda yumusak altin iltihap (tas govdesine kisilmis).
     if (open && canTake) {
-      const glow = c.createRadialGradient(bx, by, 2, bx, by, w * 0.5);
-      glow.addColorStop(0, rc);
-      glow.addColorStop(1, "transparent");
-      c.globalAlpha = 0.22;
-      c.fillStyle = glow;
+      c.save();
       c.beginPath();
-      c.arc(bx, by, w * 0.5, 0, Math.PI * 2);
-      c.fill();
-      c.globalAlpha = open ? 1 : 0.55;
+      c.roundRect(bx - w / 2, by - h / 2, w, h, Math.max(4, Math.round(w * 0.125)));
+      c.clip();
+      const glow = c.createRadialGradient(bx, by, w * 0.1, bx, by, w * 0.58);
+      glow.addColorStop(0, "rgba(255,214,110,0.30)");
+      glow.addColorStop(1, "rgba(255,214,110,0)");
+      c.fillStyle = glow;
+      c.fillRect(bx - w / 2, by - h / 2, w, h);
+      c.restore();
     }
 
-    const fx = w * 0.3;
-    const fy = h * 0.28;
-    const text = (ch: string, dy: number, size: number, color: string, stroke = true) => {
+    const fx = w * 0.36;
+    const fy = h * 0.32;
+    const text = (ch: string, dy: number, size: number, color: string) => {
       c.font = "bold " + Math.round(size) + "px " + CJK_FONT;
       c.textAlign = "center";
       c.textBaseline = "middle";
-      if (stroke) {
-        c.lineJoin = "round";
-        c.lineWidth = Math.max(2, size * 0.12);
-        c.strokeStyle = "rgba(30,20,10,0.55)";
-        c.strokeText(ch, bx, by + dy);
-      }
+      c.save();
+      c.shadowColor = "rgba(60,40,10,0.28)";
+      c.shadowBlur = 1.2;
+      c.shadowOffsetY = 1;
       c.fillStyle = color;
       c.fillText(ch, bx, by + dy);
+      c.restore();
     };
 
-    if (kind[0] === "b" || kind[0] === "c") {
+    if (kind[0] === "c") {
+      // Daire (Tong): antik sikke taslari (kare delikli para)
       const n = Number(kind.slice(1));
-      const pos = DOT_POS[n] || DOT_POS[1];
-      if (kind[0] === "c") {
-        // Daire (Tong): mavi halkalar
-        const r = n === 1 ? fy * 0.55 : n <= 2 ? fy * 0.34 : n <= 4 ? fy * 0.28 : fy * 0.24;
-        for (const [px, py] of pos) {
-          const cx = bx + px * fx;
-          const cy = by + py * fy;
-          c.beginPath();
-          c.arc(cx, cy, r, 0, Math.PI * 2);
-          c.fillStyle = n === 1 ? "#c0392b" : "#1b5faa";
-          c.fill();
-          c.lineWidth = Math.max(1, r * 0.25);
-          c.strokeStyle = "#f6ecd4";
-          c.stroke();
-          c.beginPath();
-          c.arc(cx, cy, r * 0.45, 0, Math.PI * 2);
-          c.fillStyle = n === 1 ? "#f2e3c0" : "#1b5faa";
-          c.fill();
-        }
-      } else {
-        // Bambu (Tia): yasi baglar
-        const sw = n === 1 ? fx * 0.34 : fx * 0.24;
-        const shh = n === 1 ? fy * 1.1 : fy * 0.62;
-        for (const [px, py] of pos) {
-          this.bambooStick(c, bx + px * fx, by + py * fy, sw, shh);
-        }
+      const r = n === 1 ? fy * 0.6 : n === 2 ? fy * 0.36 : n === 3 ? fy * 0.3 : n === 4 ? fy * 0.27 : fy * 0.235;
+      for (const [px, py] of DOT_POS[n]) {
+        const color = py < 0 ? "#c0392b" : py > 0 ? "#1b5faa" : "#c0392b";
+        this.drawCoin(c, bx + px * fx, by + py * fy, r, color, n === 1);
+      }
+    } else if (kind[0] === "b") {
+      // Bambu (Tia): yasi baglar (5'in ortasi kirmizidir)
+      const n = Number(kind.slice(1));
+      const sw = n === 1 ? fx * 0.36 : fx * 0.26;
+      const shh = n === 1 ? fy * 1.3 : fy * 0.66;
+      for (const [px, py] of DOT_POS[n]) {
+        const isCenter = px === 0 && py === 0;
+        this.drawStick(c, bx + px * fx, by + py * fy, sw, shh, n === 5 && isCenter ? "#c0392b" : "#2e8b57");
       }
     } else if (kind[0] === "w") {
       // Karakter (Wan): lacivert sayi + kirmizi wan
-      text(NUM_CH[Number(kind.slice(1)) - 1], -h * 0.11, h * 0.34, "#17457c");
-      text("萬", h * 0.16, h * 0.3, "#c0392b");
+      text(NUM_CH[Number(kind.slice(1)) - 1], -h * 0.115, h * 0.36, "#17457c");
+      text("萬", h * 0.175, h * 0.31, "#c0392b");
     } else if (kind === "E" || kind === "S" || kind === "W" || kind === "N") {
-      text(WIND_CH[kind], 0, h * 0.46, "#203a63");
+      text(WIND_CH[kind], 0, h * 0.48, "#1d3a5f");
     } else if (kind === "DR") {
-      text("中", 0, h * 0.5, "#c0392b");
+      text("中", 0, h * 0.52, "#c0392b");
     } else if (kind === "DG") {
-      text("發", 0, h * 0.5, "#2e8b57");
+      text("發", 0, h * 0.52, "#256d46");
     } else if (kind === "DW") {
       // Beyaz ejderha: mavi cerceve
-      c.lineWidth = Math.max(2, w * 0.045);
-      c.strokeStyle = "#3b6ea5";
+      c.strokeStyle = "#2c5f9e";
+      c.lineWidth = Math.max(2, w * 0.055);
       c.beginPath();
-      c.roundRect(bx - w * 0.22, by - h * 0.26, w * 0.44, h * 0.52, 4);
+      c.roundRect(bx - w * 0.24, by - h * 0.3, w * 0.48, h * 0.6, w * 0.06);
       c.stroke();
-      c.lineWidth = Math.max(1, w * 0.02);
-      c.strokeStyle = "rgba(59,110,165,0.6)";
+      c.strokeStyle = "rgba(44,95,158,0.55)";
+      c.lineWidth = Math.max(1, w * 0.025);
       c.beginPath();
-      c.roundRect(bx - w * 0.15, by - h * 0.19, w * 0.3, h * 0.38, 3);
+      c.roundRect(bx - w * 0.15, by - h * 0.2, w * 0.3, h * 0.4, w * 0.04);
       c.stroke();
     } else if (kind[0] === "f") {
       // Cicekler: kirmizi cicek karakteri + altin numarasi
-      text(FLOWER_CH[Number(kind.slice(1)) - 1], -h * 0.05, h * 0.4, "#c2185b");
-      text(kind.slice(1), h * 0.24, h * 0.16, "#b8860b", false);
+      text(FLOWER_CH[Number(kind.slice(1)) - 1], -h * 0.04, h * 0.42, "#c2185b");
+      text(kind.slice(1), h * 0.26, h * 0.17, "#b8860b");
     } else if (kind[0] === "s") {
-      // Mevsimler: altin mevsim karakteri + numarasi
-      text(SEASON_CH[Number(kind.slice(1)) - 1], -h * 0.05, h * 0.4, "#b8860b");
-      text(kind.slice(1), h * 0.24, h * 0.16, "#b8860b", false);
+      // Mevsimler: bronz mevsim karakteri + numarasi
+      text(SEASON_CH[Number(kind.slice(1)) - 1], -h * 0.04, h * 0.42, "#b8860b");
+      text(kind.slice(1), h * 0.26, h * 0.17, "#8a6508");
     }
     c.restore();
   }
 
-  private bambooStick(c: CanvasRenderingContext2D, cx: number, cy: number, sw: number, shh: number): void {
-    const x = cx - sw / 2;
-    const y = cy - shh / 2;
-    c.save();
-    c.fillStyle = "#2e8b57";
+  /** Antik sikke: dolu disk + kare delik (1. dairede ekstra halka). */
+  private drawCoin(c: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string, big: boolean): void {
     c.beginPath();
-    c.roundRect(x, y, sw, shh, sw * 0.45);
+    c.arc(cx, cy, r, 0, Math.PI * 2);
+    c.fillStyle = color;
     c.fill();
-    c.strokeStyle = "rgba(20,60,35,0.8)";
-    c.lineWidth = Math.max(1, sw * 0.14);
+    c.lineWidth = Math.max(0.8, r * 0.13);
+    c.strokeStyle = "rgba(40,25,10,0.35)";
     c.stroke();
-    c.strokeStyle = "rgba(253,243,218,0.9)";
-    c.lineWidth = Math.max(1, sw * 0.16);
-    for (const f of [0.3, 0.7]) {
+    if (big) {
       c.beginPath();
-      c.moveTo(x + sw * 0.1, y + shh * f);
-      c.lineTo(x + sw * 0.9, y + shh * f);
+      c.arc(cx, cy, r * 0.7, 0, Math.PI * 2);
+      c.lineWidth = Math.max(1, r * 0.12);
+      c.strokeStyle = "#f6ecd4";
       c.stroke();
     }
-    c.restore();
+    const ss = r * (big ? 0.48 : 0.44);
+    c.fillStyle = "#f6ecd4";
+    c.fillRect(cx - ss / 2, cy - ss / 2, ss, ss);
+  }
+
+  /** Yasi bag: yuvarlak govde + gun cizgileri + yan parlaklik. */
+  private drawStick(c: CanvasRenderingContext2D, cx: number, cy: number, sw: number, shh: number, color: string): void {
+    const x = cx - sw / 2;
+    const y = cy - shh / 2;
+    c.beginPath();
+    c.roundRect(x, y, sw, shh, sw * 0.5);
+    c.fillStyle = color;
+    c.fill();
+    c.lineWidth = Math.max(0.8, sw * 0.14);
+    c.strokeStyle = "rgba(40,25,10,0.3)";
+    c.stroke();
+    // gun cizgileri
+    c.strokeStyle = "rgba(15,45,25,0.45)";
+    c.lineWidth = Math.max(0.8, sw * 0.16);
+    c.beginPath();
+    c.moveTo(x + sw * 0.15, y + shh * 0.32);
+    c.lineTo(x + sw * 0.85, y + shh * 0.32);
+    c.moveTo(x + sw * 0.15, y + shh * 0.68);
+    c.lineTo(x + sw * 0.85, y + shh * 0.68);
+    c.stroke();
+    // yan parlaklik
+    c.strokeStyle = "rgba(255,255,255,0.4)";
+    c.lineWidth = Math.max(0.6, sw * 0.12);
+    c.beginPath();
+    c.moveTo(x + sw * 0.3, y + sw * 0.55);
+    c.lineTo(x + sw * 0.3, y + shh - sw * 0.55);
+    c.stroke();
   }
 
   private drawTile(
