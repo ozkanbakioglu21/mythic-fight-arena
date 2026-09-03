@@ -1,5 +1,5 @@
 // Ötüken Mahjong Solitaire
-// Kurallar: aynı Göktürk rününe sahip iki AÇIK taşı seçip eşleştir, kaldır.
+// Kurallar: standart 144 taslik mahjong setinden ayni desene sahip iki AÇIK taşı seçip eşleştir, kaldır.
 // Tüm taşlar kalkınca oyunu kazanırsın.
 
 const CANVAS_W = 720;
@@ -21,7 +21,7 @@ function shade(hex: string, percent: number): string {
 
 export interface Tile {
   id: number;
-  symbol: number; // rün indeksi
+  symbol: string; // standart mahjong tas turu (b1-b9, c1-c9, w1-w9, E/S/W/N, DR/DG/DW, f1-f4, s1-s4)
   x: number; // hücre sütunu
   y: number; // hücre satırı
   layer: number;
@@ -61,12 +61,77 @@ const RUNE_COLORS = [
   "#c1286f", "#6c8e23", "#e8432f", "#0e7ac7", "#9b5de5", "#f1a208", "#0ca3b2", "#7d4fd6",
   "#6f4e37", "#4a148c", "#b0990a", "#0b7285",
 ];
-const TILE_W = 72;
-const TILE_H = 100;
-const GAP = 10;
+// Standart mahjong seti (144 tas):
+//   Sayilar (108): bambu b1-b9, daire c1-c9, karakter w1-w9 (her turunden 4 adet)
+//   Onur (28):     ruzgarlar E/S/W/N, ejderhalar DR/DG/DW (her birinden 4 adet)
+//   Bonus (8):     cicekler f1-f4, mevsimler s1-s4 (cicekler aralarinda,
+//                  mevsimler aralarinda eslesir)
+const NUM_CH = ["一", "二", "三", "四", "五", "六", "七", "八", "九"];
+const WIND_CH: Record<string, string> = { E: "東", S: "南", W: "西", N: "北" };
+const DRAGON_CH: Record<string, string> = { DR: "中", DG: "發", DW: "白" };
+const FLOWER_CH = ["梅", "蘭", "菊", "竹"];
+const SEASON_CH = ["春", "夏", "秋", "冬"];
+const CJK_FONT = "'Segoe UI','Microsoft YaHei','Noto Sans CJK SC','Noto Sans SC',serif";
 
-// Seviye dizimleri. Her hücre 2 katman taş (üst açık, alt kapalı) alır,
-// böylece her seviye her zaman çözülebilir. Hücre sayısı = rün sayısı * 2.
+function tileColor(kind: string): string {
+  if (kind[0] === "b") return "#2e8b57";
+  if (kind[0] === "c") return "#1b5faa";
+  if (kind[0] === "w") return "#c0392b";
+  if (kind === "DR") return "#c0392b";
+  if (kind === "DG") return "#2e8b57";
+  if (kind === "DW") return "#3b6ea5";
+  if (kind[0] === "f") return "#c2185b";
+  if (kind[0] === "s") return "#b8860b";
+  return "#203a63";
+}
+
+function faceLabel(kind: string): string {
+  if (kind[0] === "b" || kind[0] === "c") return kind.slice(1);
+  if (kind[0] === "w") return NUM_CH[Number(kind.slice(1)) - 1];
+  if (kind in DRAGON_CH) return DRAGON_CH[kind];
+  if (kind[0] === "f") return FLOWER_CH[Number(kind.slice(1)) - 1];
+  if (kind[0] === "s") return SEASON_CH[Number(kind.slice(1)) - 1];
+  return WIND_CH[kind];
+}
+
+function matchKey(kind: string): string {
+  if (kind[0] === "f") return "flower";
+  if (kind[0] === "s") return "season";
+  return kind;
+}
+
+function buildPoolPairs(): Array<[string, string]> {
+  const pairs: Array<[string, string]> = [];
+  for (const su of ["b", "c", "w"])
+    for (let n = 1; n <= 9; n++) {
+      const k = su + n;
+      pairs.push([k, k]);
+      pairs.push([k, k]);
+    }
+  for (const k of ["E", "S", "W", "N", "DR", "DG", "DW"]) {
+    pairs.push([k, k]);
+    pairs.push([k, k]);
+  }
+  pairs.push(["f1", "f2"], ["f3", "f4"]);
+  pairs.push(["s1", "s2"], ["s3", "s4"]);
+  return pairs;
+}
+
+// Daire/bambu taslarinda 1-9 desen yerlesimleri (kutuya gore oranli koordinatlar).
+const DOT_POS: Record<number, Array<[number, number]>> = {
+  1: [[0, 0]],
+  2: [[0, -0.55], [0, 0.55]],
+  3: [[-0.62, -0.62], [0, 0], [0.62, 0.62]],
+  4: [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]],
+  5: [[-0.6, -0.6], [0.6, -0.6], [0, 0], [-0.6, 0.6], [0.6, 0.6]],
+  6: [[-0.55, -0.6], [0.55, -0.6], [-0.55, 0], [0.55, 0], [-0.55, 0.6], [0.55, 0.6]],
+  7: [[-0.62, -0.62], [0, -0.62], [0.62, -0.62], [-0.55, 0], [0.55, 0], [-0.55, 0.6], [0.55, 0.6]],
+  8: [[-0.6, -0.6], [0, -0.6], [0.6, -0.6], [-0.6, 0], [0.6, 0], [-0.6, 0.6], [0, 0.6], [0.6, 0.6]],
+  9: [[-0.6, -0.6], [0, -0.6], [0.6, -0.6], [-0.6, 0], [0, 0], [0.6, 0], [-0.6, 0.6], [0, 0.6], [0.6, 0.6]],
+};
+
+// Seviye dizimleri. Taşlar standart 144 taslik mahjong setinden dogrulanir;
+// sembol atamasi kaldirma simulasyonu ile cozulebilirlik garantisi verir.
 const LEVELS: Array<{ name: string; cells: Array<[number, number]>; bg: [string, string] }> =
   [
     { name: "Sıra", cells: rowShape(2, 4), bg: ["#0e2433", "#16384a"] },
@@ -81,6 +146,7 @@ const LEVELS: Array<{ name: string; cells: Array<[number, number]>; bg: [string,
     { name: "Halka", cells: ringShape(5, 5), bg: ["#1f3a33", "#2c5448"] },
     { name: "Geniş Alan 2", cells: rowShape(7, 4), bg: ["#3a2030", "#542d45"] },
     { name: "Büyük Kare", cells: rowShape(8, 4), bg: ["#2a1f3f", "#3d2a5c"] },
+    { name: "Klasik 144", cells: turtleShape(), bg: ["#10241c", "#1c4530"] },
   ];
 
 function rowShape(cols: number, rows: number): Array<[number, number]> {
@@ -213,6 +279,23 @@ function tower(): [number, number][] {
   return [[1, 0], [0, 1], [1, 1], [2, 1], [0, 2], [1, 2], [2, 2], [1, 3]];
 }
 
+function turtleShape(): Array<[number, number]> {
+  // Klasik kaplumbaganin taban katmani (87 tas). Ust katmanlar
+  // (36 + 16 + 4 + 1) buildLayout icinde eklenir; toplam 144 tas.
+  const out: Array<[number, number]> = [];
+  const rowSpan = (r: number, c0: number, c1: number) => {
+    for (let c = c0; c <= c1; c++) out.push([c, r]);
+  };
+  rowSpan(0, 2, 11);
+  rowSpan(1, 1, 13);
+  rowSpan(2, 1, 13);
+  rowSpan(3, 0, 14);
+  rowSpan(4, 1, 13);
+  rowSpan(5, 1, 13);
+  rowSpan(6, 2, 11);
+  return out;
+}
+
 const RANDOM_BG: Array<[string, string]> = [
   ["#101f3a", "#1c3052"],
   ["#112a3a", "#1e4556"],
@@ -241,7 +324,7 @@ export class Game {
   private currentLevel: { name: string; cells: Array<[number, number]>; bg: [string, string] } | null = null;
   private history: Array<{ a: number; b: number }> = [];
   private levelIndex = 0;
-  private tray: Array<{ id: number; symbol: number }> = []; // hazneye düşen eşlenen rünler (max 4)
+  private tray: Array<{ id: number; symbol: string }> = []; // hazneye düşen eşlenen taşlar (max 4)
   private motifsCache: HTMLCanvasElement | null = null;
   private shards: Array<{
     x: number;
@@ -255,7 +338,7 @@ export class Game {
   }> = [];
   private bursts: Array<{ x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; r: number }> = [];
   private floats: Array<{ x: number; y: number; life: number; max: number; text: string; color: string }> = [];
-  private pops: Array<{ x: number; y: number; life: number; max: number; symbol: number; open: boolean }> = [];
+  private pops: Array<{ x: number; y: number; life: number; max: number; symbol: string; open: boolean }> = [];
   private time = 0;
   private score = 0;
   private combo = 0;
@@ -265,6 +348,9 @@ export class Game {
   private maxShuffles = 3;
   private hintIds: number[] = [];
   private audio: AudioContext | null = null;
+  private tw = 72;
+  private th = 100;
+  private gap = 10;
 
   onHud?: (h: HudState) => void;
 
@@ -327,14 +413,9 @@ export class Game {
 
 
   private buildLayout(): void {
-    // Kademeli platform derinligi: tahta katman katman yukselir.
-    // - Kenar halkasi: 1 kat (taban, acik)
-    // - Orta bolge: 2 kat
-    // - Merkez kule: 3 kat (10+ seviyeler), 4 kat (50+ seviyeler)
-    // Cozulebilirlik icin her katman "ikiz cift" bloklari halinde kurulur:
-    // ayni sembolden iki tas. Bir cifli kaldirinca alttaki katman acilir.
     const def = this.level();
     const cells = def.cells;
+    const isTurtle = def.name === "Klasik 144";
 
     let cols = 0;
     let rows = 0;
@@ -345,45 +426,127 @@ export class Game {
     this.layoutCols = cols + 1;
     this.layoutRows = rows + 1;
 
-    // Kule derinligi ve merkez bandi.
-    const coreDepth = this.levelIndex >= 49 ? 4 : this.levelIndex >= 9 ? 3 : 2;
-    const cMn = Math.max(0, Math.floor((cols + 1) / 3));
-    const cMx = Math.min(cols, cols - 1 - Math.floor((cols + 1) / 3));
-    const rMn = Math.max(0, Math.floor((rows + 1) / 3));
-    const rMx = Math.min(rows, rows - 1 - Math.floor((rows + 1) / 3));
+    // Dinamik tas boyutu: tahta tuvale sigmayacak kadar genis/yuksekse kucult.
+    const maxW = CANVAS_W - 40;
+    const maxH = CANVAS_H - 330;
+    let tw = 72;
+    const ar = 100 / 72;
+    const gp = (w: number) => Math.max(3, Math.round(w * 0.14));
+    while (tw > 24 && (cols * (tw + gp(tw)) > maxW || rows * (tw * ar + gp(tw)) > maxH)) tw -= 2;
+    this.tw = tw;
+    this.th = Math.round(tw * ar);
+    this.gap = gp(tw);
 
-    const isCore = (c: number, r: number) => c >= cMn && c <= cMx && r >= rMn && r <= rMx;
-    const isRing = (c: number, r: number) => c === 0 || r === 0 || c === cols || r === rows;
-    const midCount = cells.filter(([c, r]) => !isRing(c, r)).length;
-
-    // Kenar 1 kat, orta 2 kat, merkez kule coreDepth kat.
-    // Orta bolge cok kucukse tahta duz 2 kat kalir (kucuk/kapali dizilimler).
-    const depthOf = (c: number, r: number) => {
-      if (isCore(c, r)) return coreDepth;
-      if (isRing(c, r) && midCount >= 4) return 1;
-      return 2;
-    };
-    const even = <T,>(a: T[]): T[] => (a.length % 2 === 0 ? a : a.slice(0, -1));
-
-    // Her katman icin o seviyeye ulasabilen hucreler (cift sayiya yuvarlanir).
-    const layers: Array<Array<[number, number]>> = [];
-    for (let L = 0; L < coreDepth; L++) {
-      layers.push(even(cells.filter(([c, r]) => depthOf(c, r) >= L + 1)));
-    }
-
-    let sym = Math.floor(Math.random() * RUNES.length);
-    const nextSym = () => (sym = (sym + 1) % RUNES.length);
-
-    for (let L = 0; L < layers.length; L++) {
-      const list = layers[L];
-      for (let i = 0; i + 1 < list.length; i += 2) {
-        const s = nextSym();
-        const [c1, r1] = list[i];
-        const [c2, r2] = list[i + 1];
-        this.tiles.push(this.makeTile(s, c1, r1, L));
-        this.tiles.push(this.makeTile(s, c2, r2, L));
+    // Katmanlar: kaplumbagada acik katman disari; digerlerinde kademeli kule.
+    let layers: Array<Array<[number, number]>>;
+    if (isTurtle) {
+      const has = (c: number, r: number) => cells.some(([cc, rr]) => cc === c && rr === r);
+      const rect = (c0: number, c1: number, r0: number, r1: number) => {
+        const out: Array<[number, number]> = [];
+        for (let r = r0; r <= r1; r++)
+          for (let c = c0; c <= c1; c++) if (has(c, r)) out.push([c, r]);
+        return out;
+      };
+      layers = [cells.slice(), rect(4, 9, 1, 6), rect(5, 8, 2, 5), rect(6, 7, 3, 4), [[6, 3]]];
+    } else {
+      // Kademeli platform derinligi: kenar 1 kat, orta 2 kat, merkez kule 2-4 kat.
+      const coreDepth = this.levelIndex >= 49 ? 4 : this.levelIndex >= 9 ? 3 : 2;
+      const cMn = Math.max(0, Math.floor((cols + 1) / 3));
+      const cMx = Math.min(cols, cols - 1 - Math.floor((cols + 1) / 3));
+      const rMn = Math.max(0, Math.floor((rows + 1) / 3));
+      const rMx = Math.min(rows, rows - 1 - Math.floor((rows + 1) / 3));
+      const isCore = (c: number, r: number) => c >= cMn && c <= cMx && r >= rMn && r <= rMx;
+      const isRing = (c: number, r: number) => c === 0 || r === 0 || c === cols || r === rows;
+      const midCount = cells.filter(([c, r]) => !isRing(c, r)).length;
+      const depthOf = (c: number, r: number) => {
+        if (isCore(c, r)) return coreDepth;
+        if (isRing(c, r) && midCount >= 4) return 1;
+        return 2;
+      };
+      const even = <T,>(a: T[]): T[] => (a.length % 2 === 0 ? a : a.slice(0, -1));
+      layers = [];
+      for (let L = 0; L < coreDepth; L++) {
+        layers.push(even(cells.filter(([c, r]) => depthOf(c, r) >= L + 1)));
       }
     }
+
+    // Tum yerlesim hucreleri (katmanli).
+    const slots: Array<{ c: number; r: number; L: number }> = [];
+    for (let L = 0; L < layers.length; L++)
+      for (const [c, r] of layers[L]) slots.push({ c, r, L });
+    if (slots.length % 2 === 1) slots.pop();
+
+    // Sembol atamasi: kaldirma simulasyonu ile cozulebilirlik garantisi.
+    const pairsNeeded = Math.floor(slots.length / 2);
+    let assigned: string[] | null = null;
+    for (let attempt = 0; attempt < 60 && !assigned; attempt++) {
+      const pool = buildPoolPairs();
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      assigned = this.assignSolvable(slots, pool.slice(0, pairsNeeded));
+    }
+    if (!assigned) {
+      // Son care: sirayla ikiz cift (eslesme garantili, cozum sirasi garanti degil).
+      assigned = [];
+      const pool = buildPoolPairs();
+      for (let i = 0; i < pairsNeeded; i++) assigned.push(pool[i][0], pool[i][1]);
+    }
+    for (let i = 0; i < slots.length; i++) {
+      const sl = slots[i];
+      this.tiles.push(this.makeTile(assigned[i], sl.c, sl.r, sl.L));
+    }
+  }
+
+  /** Kaldirma sirasini simule eder: her adimda acik bir cift secip havada
+   *  kaldirir. Basarili olursa donen dizinin her adimi oynanabilir oldugu
+   *  icin seviye garantili cozulebilir olur. */
+  private assignSolvable(
+    slots: Array<{ c: number; r: number; L: number }>,
+    pool: Array<[string, string]>,
+  ): string[] | null {
+    const n = slots.length;
+    const alive = new Array<boolean>(n).fill(true);
+    const out: string[] = new Array<string>(n);
+    const above: number[][] = new Array(n);
+    const lft: number[][] = new Array(n);
+    const rgt: number[][] = new Array(n);
+    for (let i = 0; i < n; i++) {
+      above[i] = [];
+      lft[i] = [];
+      rgt[i] = [];
+    }
+    for (let i = 0; i < n; i++)
+      for (let j = 0; j < n; j++) {
+        if (i === j) continue;
+        const a = slots[i];
+        const b = slots[j];
+        if (a.c === b.c && a.r === b.r && b.L > a.L) above[i].push(j);
+        if (a.r === b.r && b.L >= a.L) {
+          if (b.c === a.c - 1) lft[i].push(j);
+          else if (b.c === a.c + 1) rgt[i].push(j);
+        }
+      }
+    const isFree = (i: number): boolean => {
+      for (const j of above[i]) if (alive[j]) return false;
+      const L = lft[i].some((j) => alive[j]);
+      const R = rgt[i].some((j) => alive[j]);
+      return !L || !R;
+    };
+    for (let p = 0; p < pool.length; p++) {
+      const free: number[] = [];
+      for (let i = 0; i < n; i++) if (alive[i] && isFree(i)) free.push(i);
+      if (free.length < 2) return null;
+      const a = free[Math.floor(Math.random() * free.length)];
+      let b = a;
+      while (b === a) b = free[Math.floor(Math.random() * free.length)];
+      alive[a] = false;
+      alive[b] = false;
+      out[a] = pool[p][0];
+      out[b] = pool[p][1];
+    }
+    return out;
   }
   private layoutCols = 4;
   private layoutRows = 4;
@@ -393,17 +556,19 @@ export class Game {
     return CANVAS_W / 2;
   }
 
-  private makeTile(symbol: number, col: number, row: number, layer: number): Tile {
+  private makeTile(symbol: string, col: number, row: number, layer: number): Tile {
     // Üst katman aynı hücrenin üzerine hafifçe kayarak biner (mahjong hissi).
-    const ox = layer * 12;
-    const oy = layer * -14;
-    const boardW = this.layoutCols * (TILE_W + GAP);
-    const boardH = this.layoutRows * (TILE_H + GAP);
-    // Sağ panel (x=900+) hariç kullanılabilir bölgenin merkezine hizala.
+    const tw = this.tw;
+    const th = this.th;
+    const gap = this.gap;
+    const ox = layer * tw * 0.17;
+    const oy = layer * -th * 0.14;
+    const boardW = this.layoutCols * (tw + gap);
+    const boardH = this.layoutRows * (th + gap);
     const sx0 = this.boardOriginX() - boardW / 2;
     const sy0 = (CANVAS_H - boardH) / 2 + 30;
-    const sx = sx0 + col * (TILE_W + GAP) + ox;
-    const sy = sy0 + row * (TILE_H + GAP) + oy;
+    const sx = sx0 + col * (tw + gap) + ox;
+    const sy = sy0 + row * (th + gap) + oy;
     return {
       id: col * 1000 + row * 10 + layer,
       symbol,
@@ -515,8 +680,8 @@ export class Game {
     let target: Tile | null = null;
     for (const t of this.tiles) {
       if (!this.isOpen(t) || !this.sideFree(t)) continue;
-      const halfW = TILE_W / 2;
-      const halfH = TILE_H / 2;
+      const halfW = this.tw / 2;
+      const halfH = this.th / 2;
       if (
         x >= t.sx - halfW &&
         x <= t.sx + halfW &&
@@ -532,11 +697,11 @@ export class Game {
     target.removed = true;
     this.tray.push({ id: target.id, symbol: target.symbol });
 
-    // Haznede aynı ründen 2 varsa -> kır (eşleşme).
+    // Haznede aynı desenden 2 varsa -> kır (eşleşme).
     const lastIdx = this.tray.length - 1;
     let pairIdx = -1;
     for (let i = 0; i < lastIdx; i++) {
-      if (this.tray[i].symbol === target.symbol) {
+      if (matchKey(this.tray[i].symbol) === matchKey(target.symbol)) {
         pairIdx = i;
         break;
       }
@@ -723,7 +888,6 @@ export class Game {
     /** Haznedeki pairIdx ve lastIdx slotlarindaki iki tasi kirar. */
   private breakPair(a: number, b: number): void {
     this.sfx("match");
-    const color = RUNE_COLORS;
     if (a > b) {
       const t = a;
       a = b;
@@ -739,13 +903,13 @@ export class Game {
         for (let k = 0; k < 18; k++) {
           const ang = Math.random() * Math.PI * 2;
           const spd = 90 + Math.random() * 260;
-          this.bursts.push({ x: bt.sx, y: bt.sy, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd - 60, life: 0.7, max: 1, color: RUNE_COLORS[bt.symbol], r: 3 + Math.random() * 6 });
+          this.bursts.push({ x: bt.sx, y: bt.sy, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd - 60, life: 0.7, max: 1, color: tileColor(bt.symbol), r: 3 + Math.random() * 6 });
         }
         this.bursts.push({ x: bt.sx, y: bt.sy, vx: 0, vy: -40, life: 0.35, max: 0.35, color: "#ffffff", r: 26 });
       }
       this.floats.push({ x: (btA!.sx + btB!.sx) / 2, y: (btA!.sy + btB!.sy) / 2 - 10, life: 1.0, max: 1.0, text: "+2", color: "#ffd75e" });
     }
-    const shard = (slot: number, sym: number) => {
+    const shard = (slot: number, sym: string) => {
       const bx = CANVAS_W / 2 + (slot - 1.5) * 40;
       for (let k = 0; k < 6; k++) {
         const ang = Math.random() * Math.PI * 2;
@@ -757,7 +921,7 @@ export class Game {
           vy: Math.sin(ang) * spd - 120,
           life: 0.7 + Math.random() * 0.5,
           max: 1,
-          color: color[sym],
+          color: tileColor(sym),
           r: 3 + Math.random() * 5,
         });
       }
@@ -795,23 +959,24 @@ export class Game {
     const usable = (t: Tile) => !t.removed && this.isOpen(t) && this.sideFree(t);
     // Once haznedeki tek tasa karsi acik esi var mi? (en dogrudan hamle)
     for (const te of this.tray) {
-      const e = this.tiles.find((t) => usable(t) && t.symbol === te.symbol && t.id !== te.id);
+      const e = this.tiles.find((t) => usable(t) && matchKey(t.symbol) === matchKey(te.symbol) && t.id !== te.id);
       if (e) {
         this.hintIds = [e.id];
         this.emitHud();
         return;
       }
     }
-    // Yoksa tahtada ayni sembollu iki acik tasa bak.
-    const seen = new Map<number, Tile>();
+    // Yoksa tahtada ayni desende iki acik tasa bak.
+    const seen = new Map<string, Tile>();
     for (const o of this.tiles) {
       if (!usable(o)) continue;
-      if (seen.has(o.symbol)) {
-        this.hintIds = [seen.get(o.symbol)!.id, o.id];
+      const mk = matchKey(o.symbol);
+      if (seen.has(mk)) {
+        this.hintIds = [seen.get(mk)!.id, o.id];
         this.emitHud();
         return;
       }
-      seen.set(o.symbol, o);
+      seen.set(mk, o);
     }
     this.emitHud();
   }
@@ -827,7 +992,7 @@ export class Game {
       c.shadowColor = "rgba(255,220,80,0.9)";
       c.shadowBlur = 12 + 8 * p;
       c.beginPath();
-      c.roundRect(t.sx - TILE_W / 2 - 5, t.sy - TILE_H / 2 - 5, TILE_W + 10, TILE_H + 10, 12);
+      c.roundRect(t.sx - this.tw / 2 - 5, t.sy - this.th / 2 - 5, this.tw + 10, this.th + 10, 12);
       c.stroke();
       c.restore();
     }
@@ -987,14 +1152,15 @@ export class Game {
     if (remaining > 0) {
       // Çözülebilir mi? (basit: açık eşleşme var mı)
       const opens = this.tiles.filter((t) => this.isOpen(t));
-      const seen = new Set<number>();
+      const seen = new Set<string>();
       stuck = true;
       for (const o of opens) {
-        if (seen.has(o.symbol)) {
+        const mk = matchKey(o.symbol);
+        if (seen.has(mk)) {
           stuck = false;
           break;
         }
-        seen.add(o.symbol);
+        seen.add(mk);
       }
     }
     this.onHud?.({
@@ -1262,8 +1428,8 @@ export class Game {
     this.drawFates(c);
 
     // Yerleşimin çerçevesi (taş alanına göre).
-    const boxW = this.layoutCols * (TILE_W + GAP) + GAP;
-    const boxH = this.layoutRows * (TILE_H + GAP) + GAP;
+    const boxW = this.layoutCols * (this.tw + this.gap) + this.gap;
+    const boxH = this.layoutRows * (this.th + this.gap) + this.gap;
     const bx = this.boardOriginX() - boxW / 2;
     const by = (CANVAS_H - boxH) / 2 + 30;
     c.strokeStyle = "rgba(255,255,255,0.08)";
@@ -1328,18 +1494,18 @@ export class Game {
       const a = Math.max(0, Math.min(1, k * 2.5));
       c.save();
       c.globalAlpha = a;
-      c.strokeStyle = RUNE_COLORS[pp.symbol];
+      c.strokeStyle = tileColor(pp.symbol);
       c.lineWidth = 3;
       const rr = (1 - k) * 46 + 8;
       c.beginPath();
       c.arc(pp.x, pp.y, rr, 0, Math.PI * 2);
       c.stroke();
       c.globalAlpha = a * 0.55;
-      c.fillStyle = RUNE_COLORS[pp.symbol];
-      c.font = "bold 40px 'Segoe UI Historic','Noto Sans Old Turkic',serif";
+      c.fillStyle = tileColor(pp.symbol);
+      c.font = "bold 30px " + CJK_FONT;
       c.textAlign = "center";
       c.textBaseline = "middle";
-      c.fillText(RUNES[pp.symbol], pp.x, pp.y);
+      c.fillText(faceLabel(pp.symbol), pp.x, pp.y);
       c.restore();
     }
 
@@ -1384,10 +1550,10 @@ export class Game {
       c.lineWidth = 1;
       c.stroke();
       if (i < this.tray.length) {
-        c.fillStyle = RUNE_COLORS[this.tray[i].symbol];
-        c.font = "bold 30px 'Segoe UI Historic','Noto Sans Old Turkic',serif";
-        c.textBaseline = "alphabetic";
-        c.fillText(RUNES[this.tray[i].symbol], sx + slotW / 2, trayY + 8);
+        c.fillStyle = tileColor(this.tray[i].symbol);
+        c.font = "bold 26px " + CJK_FONT;
+        c.textBaseline = "middle";
+        c.fillText(faceLabel(this.tray[i].symbol), sx + slotW / 2, trayY - 8);
       }
     }
     c.textBaseline = "alphabetic";
@@ -1477,659 +1643,130 @@ export class Game {
     return this.levelIndex >= 100 ? "mixed" : "none";
   }
 
-  /** 201. seviye (Hayvanlar) taş yüzü çizimi. t.symbol % 8:
-   *  0 at · 1 koyun · 2 kartal · 3 kurt · 4 geyik · 5 boğa ·
-   *  6 tilki · 7 yılan. */
-
-  private drawAnimalIcon(
-    c: CanvasRenderingContext2D,
-    t: Tile,
-    open: boolean,
-  ): void {
-    const cx = t.sx;
-    const cy = t.sy + 6;
+  private drawFace(c: CanvasRenderingContext2D, t: Tile, open: boolean, canTake: boolean): void {
+    const w = this.tw;
+    const h = this.th;
+    const bx = t.sx;
+    const by = t.sy;
+    const kind = t.symbol;
+    const rc = tileColor(kind);
     c.save();
-    c.globalAlpha *= open ? 1 : 0.32;
-    c.shadowColor = "rgba(10,5,0,0.40)";
-    c.shadowBlur = 5;
-    c.shadowOffsetY = 2;
-    c.lineCap = "round";
-    c.lineJoin = "round";
-    switch (t.symbol % 8) {
-      case 0: {
-        // At (kafa profili)
-        const gg0 = c.createLinearGradient(0, cy - 16, 0, cy + 16);
-        gg0.addColorStop(0, "#c8915c");
-        gg0.addColorStop(0.5, "#a06a3a");
-        gg0.addColorStop(1, "#6e4420");
-        c.strokeStyle = "#4a2e14";
-        c.fillStyle = gg0;
-        c.lineWidth = 2.5;
-        c.beginPath();
-        c.moveTo(cx - 8, cy + 16);
-        c.quadraticCurveTo(cx - 16, cy + 2, cx - 9, cy - 4);
-        c.lineTo(cx - 4, cy - 14);
-        c.lineTo(cx + 2, cy - 12);
-        c.lineTo(cx + 5, cy - 6);
-        c.quadraticCurveTo(cx + 12, cy + 0, cx + 10, cy + 8);
-        c.quadraticCurveTo(cx + 4, cy + 12, cx - 8, cy + 16);
-        c.closePath();
-        c.fill();
-        c.stroke();
-        c.fillStyle = "#2a1a0e";
-        c.beginPath();
-        c.arc(cx + 3, cy - 2, 1.4, 0, Math.PI * 2);
-        c.fill();
-        c.fillStyle = "#fff";
-        c.beginPath();
-        c.arc(cx + 3.4, cy - 2.4, 0.5, 0, Math.PI * 2);
-        c.fill();
-        c.strokeStyle = "#5a3a16";
-        c.lineWidth = 2;
-        c.beginPath();
-        c.moveTo(cx - 8, cy - 2);
-        c.quadraticCurveTo(cx - 2, cy + 2, cx + 2, cy + 8);
-        c.stroke();
-        break;
+    if (!open) c.globalAlpha = 0.55;
+    else if (!canTake) c.globalAlpha = 0.85;
+
+    // Alinabilir taslarda hafif iltihap.
+    if (open && canTake) {
+      const glow = c.createRadialGradient(bx, by, 2, bx, by, w * 0.5);
+      glow.addColorStop(0, rc);
+      glow.addColorStop(1, "transparent");
+      c.globalAlpha = 0.22;
+      c.fillStyle = glow;
+      c.beginPath();
+      c.arc(bx, by, w * 0.5, 0, Math.PI * 2);
+      c.fill();
+      c.globalAlpha = open ? 1 : 0.55;
+    }
+
+    const fx = w * 0.3;
+    const fy = h * 0.28;
+    const text = (ch: string, dy: number, size: number, color: string, stroke = true) => {
+      c.font = "bold " + Math.round(size) + "px " + CJK_FONT;
+      c.textAlign = "center";
+      c.textBaseline = "middle";
+      if (stroke) {
+        c.lineJoin = "round";
+        c.lineWidth = Math.max(2, size * 0.12);
+        c.strokeStyle = "rgba(30,20,10,0.55)";
+        c.strokeText(ch, bx, by + dy);
       }
-      case 1: {
-        // Koyun (yün + kafa)
-        const wool = c.createRadialGradient(cx - 3, cy - 3, 2, cx, cy, 16);
-        wool.addColorStop(0, "#ffffff");
-        wool.addColorStop(0.6, "#f3edda");
-        wool.addColorStop(1, "#d8cdb0");
-        c.fillStyle = wool;
-        c.beginPath();
-        c.arc(cx, cy + 2, 12, 0, Math.PI * 2);
-        c.fill();
-        c.beginPath();
-        c.arc(cx - 8, cy + 2, 6, 0, Math.PI * 2);
-        c.fill();
-        c.beginPath();
-        c.arc(cx + 8, cy + 2, 6, 0, Math.PI * 2);
-        c.fill();
-        const head = c.createLinearGradient(0, cy - 16, 0, cy - 4);
-        head.addColorStop(0, "#e2bd95");
-        head.addColorStop(1, "#b98d5e");
-        c.fillStyle = head;
-        c.beginPath();
-        c.ellipse(cx, cy - 10, 5, 6, 0, 0, Math.PI * 2);
-        c.fill();
-        c.fillStyle = "#3a2a1a";
-        c.beginPath();
-        c.arc(cx + 2, cy - 11, 1.3, 0, Math.PI * 2);
-        c.fill();
-        c.fillStyle = "#fff";
-        c.beginPath();
-        c.arc(cx + 2.4, cy - 11.4, 0.5, 0, Math.PI * 2);
-        c.fill();
-        c.fillStyle = "#e2bd95";
-        c.beginPath();
-        c.arc(cx - 9, cy - 11, 2, 0, Math.PI * 2);
-        c.fill();
-        c.beginPath();
-        c.arc(cx + 8, cy - 11, 2, 0, Math.PI * 2);
-        c.fill();
-        c.fillStyle = "#b98d5e";
-        c.beginPath();
-        c.arc(cx - 11, cy - 11.5, 1, 0, Math.PI * 2);
-        c.fill();
-        c.beginPath();
-        c.arc(cx + 6, cy - 11.5, 1, 0, Math.PI * 2);
-        c.fill();
-        break;
+      c.fillStyle = color;
+      c.fillText(ch, bx, by + dy);
+    };
+
+    if (kind[0] === "b" || kind[0] === "c") {
+      const n = Number(kind.slice(1));
+      const pos = DOT_POS[n] || DOT_POS[1];
+      if (kind[0] === "c") {
+        // Daire (Tong): mavi halkalar
+        const r = n === 1 ? fy * 0.55 : n <= 2 ? fy * 0.34 : n <= 4 ? fy * 0.28 : fy * 0.24;
+        for (const [px, py] of pos) {
+          const cx = bx + px * fx;
+          const cy = by + py * fy;
+          c.beginPath();
+          c.arc(cx, cy, r, 0, Math.PI * 2);
+          c.fillStyle = n === 1 ? "#c0392b" : "#1b5faa";
+          c.fill();
+          c.lineWidth = Math.max(1, r * 0.25);
+          c.strokeStyle = "#f6ecd4";
+          c.stroke();
+          c.beginPath();
+          c.arc(cx, cy, r * 0.45, 0, Math.PI * 2);
+          c.fillStyle = n === 1 ? "#f2e3c0" : "#1b5faa";
+          c.fill();
+        }
+      } else {
+        // Bambu (Tia): yasi baglar
+        const sw = n === 1 ? fx * 0.34 : fx * 0.24;
+        const shh = n === 1 ? fy * 1.1 : fy * 0.62;
+        for (const [px, py] of pos) {
+          this.bambooStick(c, bx + px * fx, by + py * fy, sw, shh);
+        }
       }
-      case 2: {
-        // Kartal (kanatlı kuş)
-        const body = c.createLinearGradient(0, cy - 8, 0, cy + 12);
-        body.addColorStop(0, "#8a5a2a");
-        body.addColorStop(1, "#5a360f");
-        c.fillStyle = body;
-        c.beginPath();
-        c.ellipse(cx, cy + 2, 5, 9, 0, 0, Math.PI * 2);
-        c.fill();
-        const wing = c.createLinearGradient(0, cy - 10, 0, cy + 6);
-        wing.addColorStop(0, "#6b4418");
-        wing.addColorStop(1, "#3c2408");
-        c.fillStyle = wing;
-        c.beginPath();
-        c.moveTo(cx - 3, cy - 2);
-        c.lineTo(cx - 18, cy - 8);
-        c.lineTo(cx - 8, cy + 4);
-        c.closePath();
-        c.fill();
-        c.beginPath();
-        c.moveTo(cx + 3, cy - 2);
-        c.lineTo(cx + 18, cy - 8);
-        c.lineTo(cx + 8, cy + 4);
-        c.closePath();
-        c.fill();
-        c.fillStyle = "#6b4418";
-        c.beginPath();
-        c.arc(cx, cy - 10, 3, 0, Math.PI * 2);
-        c.fill();
-        const beak = c.createLinearGradient(0, cy - 14, 0, cy - 6);
-        beak.addColorStop(0, "#ffd86b");
-        beak.addColorStop(1, "#f0a020");
-        c.fillStyle = beak;
-        c.beginPath();
-        c.moveTo(cx, cy - 8);
-        c.lineTo(cx + 5, cy - 13);
-        c.lineTo(cx, cy - 14);
-        c.closePath();
-        c.fill();
-        c.fillStyle = "#fff";
-        c.beginPath();
-        c.arc(cx - 1, cy - 11, 0.8, 0, Math.PI * 2);
-        c.fill();
-        break;
-      }
-      case 3: {
-        // Kurt (kafa)
-        const face = c.createLinearGradient(0, cy - 16, 0, cy + 8);
-        face.addColorStop(0, "#aab4be");
-        face.addColorStop(0.5, "#8a959f");
-        face.addColorStop(1, "#646e79");
-        c.fillStyle = face;
-        c.beginPath();
-        c.moveTo(cx - 10, cy + 2);
-        c.lineTo(cx, cy - 14);
-        c.lineTo(cx + 10, cy + 2);
-        c.closePath();
-        c.fill();
-        const ear = c.createLinearGradient(0, cy - 18, 0, cy - 6);
-        ear.addColorStop(0, "#aab4be");
-        ear.addColorStop(1, "#7a848f");
-        c.fillStyle = ear;
-        c.beginPath();
-        c.moveTo(cx - 6, cy - 6);
-        c.lineTo(cx - 10, cy - 18);
-        c.lineTo(cx - 1, cy - 10);
-        c.closePath();
-        c.fill();
-        c.beginPath();
-        c.moveTo(cx + 6, cy - 6);
-        c.lineTo(cx + 10, cy - 18);
-        c.lineTo(cx + 1, cy - 10);
-        c.closePath();
-        c.fill();
-        const muzzle = c.createLinearGradient(0, cy + 2, 0, cy + 10);
-        muzzle.addColorStop(0, "#737d88");
-        muzzle.addColorStop(1, "#4d5660");
-        c.fillStyle = muzzle;
-        c.beginPath();
-        c.ellipse(cx, cy + 5, 7, 4, 0, 0, Math.PI * 2);
-        c.fill();
-        c.fillStyle = "#2c343a";
-        c.beginPath();
-        c.arc(cx, cy + 6, 1.6, 0, Math.PI * 2);
-        c.fill();
-        c.fillStyle = "#fff";
-        c.beginPath();
-        c.arc(cx - 4, cy - 3, 1.6, 0, Math.PI * 2);
-        c.fill();
-        c.beginPath();
-        c.arc(cx + 4, cy - 3, 1.6, 0, Math.PI * 2);
-        c.fill();
-        c.fillStyle = "#2c343a";
-        c.beginPath();
-        c.arc(cx - 4, cy - 3, 0.8, 0, Math.PI * 2);
-        c.fill();
-        c.beginPath();
-        c.arc(cx + 4, cy - 3, 0.8, 0, Math.PI * 2);
-        c.fill();
-        break;
-      }
-      case 4: {
-        // Geyik (kafa + boynuz)
-        const head = c.createLinearGradient(0, cy - 8, 0, cy + 12);
-        head.addColorStop(0, "#d79a5c");
-        head.addColorStop(0.5, "#c2844a");
-        head.addColorStop(1, "#8f5a2a");
-        c.fillStyle = head;
-        c.beginPath();
-        c.ellipse(cx, cy + 3, 7, 9, 0, 0, Math.PI * 2);
-        c.fill();
-        c.strokeStyle = "#8a5a28";
-        c.lineWidth = 2;
-        c.beginPath();
-        c.moveTo(cx - 4, cy - 5);
-        c.lineTo(cx - 6, cy - 12);
-        c.lineTo(cx - 10, cy - 14);
-        c.moveTo(cx - 6, cy - 12);
-        c.lineTo(cx - 3, cy - 17);
-        c.stroke();
-        c.beginPath();
-        c.moveTo(cx + 4, cy - 5);
-        c.lineTo(cx + 6, cy - 12);
-        c.lineTo(cx + 10, cy - 14);
-        c.moveTo(cx + 6, cy - 12);
-        c.lineTo(cx + 3, cy - 17);
-        c.stroke();
-        const ear = c.createLinearGradient(0, cy - 6, 0, cy + 2);
-        ear.addColorStop(0, "#c2844a");
-        ear.addColorStop(1, "#8f5a2a");
-        c.fillStyle = ear;
-        c.beginPath();
-        c.ellipse(cx - 8, cy - 2, 2.5, 5, -0.3, 0, Math.PI * 2);
-        c.fill();
-        c.beginPath();
-        c.ellipse(cx + 8, cy - 2, 2.5, 5, 0.3, 0, Math.PI * 2);
-        c.fill();
-        c.fillStyle = "#2a1a0e";
-        c.beginPath();
-        c.arc(cx - 2, cy + 1, 1.2, 0, Math.PI * 2);
-        c.fill();
-        c.beginPath();
-        c.arc(cx + 2, cy + 1, 1.2, 0, Math.PI * 2);
-        c.fill();
-        c.fillStyle = "#fff";
-        c.beginPath();
-        c.arc(cx - 1.6, cy + 0.6, 0.4, 0, Math.PI * 2);
-        c.fill();
-        c.beginPath();
-        c.arc(cx + 2.4, cy + 0.6, 0.4, 0, Math.PI * 2);
-        c.fill();
-        break;
-      }
-      case 5: {
-        // Boğa (kafa + boynuz)
-        const head = c.createLinearGradient(0, cy - 8, 0, cy + 10);
-        head.addColorStop(0, "#a45a2c");
-        head.addColorStop(0.5, "#8a4422");
-        head.addColorStop(1, "#5f2c12");
-        c.fillStyle = head;
-        c.beginPath();
-        c.ellipse(cx, cy + 2, 11, 8, 0, 0, Math.PI * 2);
-        c.fill();
-        const ear = c.createLinearGradient(0, cy - 2, 0, cy + 6);
-        ear.addColorStop(0, "#7a3a1a");
-        ear.addColorStop(1, "#51270f");
-        c.fillStyle = ear;
-        c.beginPath();
-        c.ellipse(cx - 12, cy + 1, 2, 4, -0.4, 0, Math.PI * 2);
-        c.fill();
-        c.beginPath();
-        c.ellipse(cx + 12, cy + 1, 2, 4, 0.4, 0, Math.PI * 2);
-        c.fill();
-        const horn = c.createLinearGradient(0, cy - 14, 0, cy - 2);
-        horn.addColorStop(0, "#f5f0e0");
-        horn.addColorStop(1, "#c9bfa0");
-        c.strokeStyle = horn;
-        c.lineWidth = 2.5;
-        c.beginPath();
-        c.moveTo(cx - 8, cy - 3);
-        c.quadraticCurveTo(cx - 14, cy - 12, cx - 6, cy - 14);
-        c.stroke();
-        c.beginPath();
-        c.moveTo(cx + 8, cy - 3);
-        c.quadraticCurveTo(cx + 14, cy - 12, cx + 6, cy - 14);
-        c.stroke();
-        c.fillStyle = "#2a1a0e";
-        c.beginPath();
-        c.arc(cx - 4, cy + 1, 1.2, 0, Math.PI * 2);
-        c.fill();
-        c.beginPath();
-        c.arc(cx + 4, cy + 1, 1.2, 0, Math.PI * 2);
-        c.fill();
-        c.fillStyle = "#fff";
-        c.beginPath();
-        c.arc(cx - 3.6, cy + 0.6, 0.4, 0, Math.PI * 2);
-        c.fill();
-        c.beginPath();
-        c.arc(cx + 4.4, cy + 0.6, 0.4, 0, Math.PI * 2);
-        c.fill();
-        c.fillStyle = "#2a1a0e";
-        c.beginPath();
-        c.ellipse(cx - 1, cy + 5, 3, 1.6, 0, 0, Math.PI * 2);
-        c.fill();
-        break;
-      }
-      case 6: {
-        // Tilki (kafa)
-        const face = c.createLinearGradient(0, cy - 8, 0, cy + 10);
-        face.addColorStop(0, "#f7a648");
-        face.addColorStop(0.5, "#e8912f");
-        face.addColorStop(1, "#c26f1c");
-        c.fillStyle = face;
-        c.beginPath();
-        c.moveTo(cx, cy - 4);
-        c.lineTo(cx + 8, cy + 8);
-        c.lineTo(cx - 8, cy + 8);
-        c.closePath();
-        c.fill();
-        c.fillStyle = "#fff";
-        c.beginPath();
-        c.moveTo(cx, cy - 4);
-        c.lineTo(cx + 3, cy + 8);
-        c.lineTo(cx - 3, cy + 8);
-        c.closePath();
-        c.fill();
-        c.fillStyle = "#3a2410";
-        c.beginPath();
-        c.arc(cx, cy + 4, 1, 0, Math.PI * 2);
-        c.fill();
-        const ear = c.createLinearGradient(0, cy - 8, 0, cy - 1);
-        ear.addColorStop(0, "#f0a03a");
-        ear.addColorStop(1, "#c05f12");
-        c.fillStyle = ear;
-        c.beginPath();
-        c.moveTo(cx - 6, cy + 2);
-        c.lineTo(cx - 9, cy - 8);
-        c.lineTo(cx - 2, cy - 2);
-        c.closePath();
-        c.fill();
-        c.beginPath();
-        c.moveTo(cx + 6, cy + 2);
-        c.lineTo(cx + 9, cy - 8);
-        c.lineTo(cx + 2, cy - 2);
-        c.closePath();
-        c.fill();
-        c.fillStyle = "#2a1508";
-        c.beginPath();
-        c.arc(cx - 4, cy + 2, 1.3, 0, Math.PI * 2);
-        c.fill();
-        c.beginPath();
-        c.arc(cx + 4, cy + 2, 1.3, 0, Math.PI * 2);
-        c.fill();
-        c.fillStyle = "#fff";
-        c.beginPath();
-        c.arc(cx - 3.6, cy + 1.6, 0.45, 0, Math.PI * 2);
-        c.fill();
-        c.beginPath();
-        c.arc(cx + 4.4, cy + 1.6, 0.45, 0, Math.PI * 2);
-        c.fill();
-        break;
-      }
-      default: {
-        // Yılan (7) S kıvrım
-        const body = c.createLinearGradient(cx - 16, 0, cx + 16, 0);
-        body.addColorStop(0, "#3f8b5c");
-        body.addColorStop(0.5, "#57b276");
-        body.addColorStop(1, "#3f8b5c");
-        c.strokeStyle = body;
-        c.lineWidth = 5;
-        c.beginPath();
-        c.moveTo(cx - 14, cy + 12);
-        c.quadraticCurveTo(cx + 14, cy + 10, cx - 2, cy + 2);
-        c.quadraticCurveTo(cx - 16, cy - 6, cx + 2, cy - 8);
-        c.quadraticCurveTo(cx + 12, cy - 10, cx + 8, cy - 13);
-        c.stroke();
-        c.strokeStyle = "rgba(255,255,255,0.35)";
-        c.lineWidth = 1.2;
-        c.beginPath();
-        c.moveTo(cx - 11, cy + 9);
-        c.quadraticCurveTo(cx + 8, cy + 8, cx - 2, cy + 3);
-        c.stroke();
-        const hd = c.createLinearGradient(0, cy - 16, 0, cy - 10);
-        hd.addColorStop(0, "#5cb881");
-        hd.addColorStop(1, "#3f8b5c");
-        c.fillStyle = hd;
-        c.beginPath();
-        c.arc(cx + 8, cy - 13, 4, 0, Math.PI * 2);
-        c.fill();
-        c.strokeStyle = "#e23030";
-        c.lineWidth = 1.5;
-        c.beginPath();
-        c.moveTo(cx + 12, cy - 13);
-        c.lineTo(cx + 17, cy - 16);
-        c.moveTo(cx + 12, cy - 13);
-        c.lineTo(cx + 16, cy - 11);
-        c.stroke();
-        c.fillStyle = "#fff";
-        c.beginPath();
-        c.arc(cx + 9, cy - 14, 1.2, 0, Math.PI * 2);
-        c.fill();
-        c.fillStyle = "#15241a";
-        c.beginPath();
-        c.arc(cx + 9.3, cy - 14.3, 0.55, 0, Math.PI * 2);
-        c.fill();
-        break;
-      }
+    } else if (kind[0] === "w") {
+      // Karakter (Wan): lacivert sayi + kirmizi wan
+      text(NUM_CH[Number(kind.slice(1)) - 1], -h * 0.11, h * 0.34, "#17457c");
+      text("萬", h * 0.16, h * 0.3, "#c0392b");
+    } else if (kind === "E" || kind === "S" || kind === "W" || kind === "N") {
+      text(WIND_CH[kind], 0, h * 0.46, "#203a63");
+    } else if (kind === "DR") {
+      text("中", 0, h * 0.5, "#c0392b");
+    } else if (kind === "DG") {
+      text("發", 0, h * 0.5, "#2e8b57");
+    } else if (kind === "DW") {
+      // Beyaz ejderha: mavi cerceve
+      c.lineWidth = Math.max(2, w * 0.045);
+      c.strokeStyle = "#3b6ea5";
+      c.beginPath();
+      c.roundRect(bx - w * 0.22, by - h * 0.26, w * 0.44, h * 0.52, 4);
+      c.stroke();
+      c.lineWidth = Math.max(1, w * 0.02);
+      c.strokeStyle = "rgba(59,110,165,0.6)";
+      c.beginPath();
+      c.roundRect(bx - w * 0.15, by - h * 0.19, w * 0.3, h * 0.38, 3);
+      c.stroke();
+    } else if (kind[0] === "f") {
+      // Cicekler: kirmizi cicek karakteri + altin numarasi
+      text(FLOWER_CH[Number(kind.slice(1)) - 1], -h * 0.05, h * 0.4, "#c2185b");
+      text(kind.slice(1), h * 0.24, h * 0.16, "#b8860b", false);
+    } else if (kind[0] === "s") {
+      // Mevsimler: altin mevsim karakteri + numarasi
+      text(SEASON_CH[Number(kind.slice(1)) - 1], -h * 0.05, h * 0.4, "#b8860b");
+      text(kind.slice(1), h * 0.24, h * 0.16, "#b8860b", false);
     }
     c.restore();
   }
 
-
-
-  /** 100+. seviye taş yüzü çizimi. t.symbol % 8:
-   *  0 kar · 1 çiçek · 2 güneş · 3 yaprak · 4 çam · 5 yapraklı ağaç ·
-   *  6 meyve ağacı · 7 kiraz çiçeği ağacı. */
-  private drawSeasonIcon(
-    c: CanvasRenderingContext2D,
-    t: Tile,
-    open: boolean,
-  ): void {
-    const cx = t.sx;
-    const cy = t.sy + 6;
+  private bambooStick(c: CanvasRenderingContext2D, cx: number, cy: number, sw: number, shh: number): void {
+    const x = cx - sw / 2;
+    const y = cy - shh / 2;
     c.save();
-    c.globalAlpha *= open ? 1 : 0.32;
-    c.shadowColor = "rgba(20,10,0,0.40)";
-    c.shadowBlur = 5;
-    c.shadowOffsetY = 2;
-    c.strokeStyle = "#3a2a1a";
-    c.lineWidth = 3;
-    c.lineCap = "round";
-    c.lineJoin = "round";
-    switch (t.symbol % 8) {
-      case 0: {
-        // Kar (kış)
-        const body = c.createRadialGradient(cx - 4, cy + 2, 2, cx, cy + 8, 22);
-        body.addColorStop(0, "#ffffff");
-        body.addColorStop(0.5, "#eaf3ff");
-        body.addColorStop(1, "#bfe0ff");
-        c.fillStyle = body;
-        c.beginPath();
-        c.moveTo(cx - 20, cy + 16);
-        c.quadraticCurveTo(cx - 14, cy + 2, cx, cy + 8);
-        c.quadraticCurveTo(cx + 14, cy + 16, cx + 20, cy + 16);
-        c.closePath();
-        c.fill();
-        c.strokeStyle = "#9fc8ee";
-        c.lineWidth = 2;
-        for (let i = -1; i <= 1; i++) {
-          c.beginPath();
-          c.moveTo(cx + i * 14, cy - 2);
-          c.lineTo(cx + i * 14, cy - 16);
-          c.lineTo(cx + i * 14 + 5, cy - 11);
-          c.moveTo(cx + i * 14, cy - 9);
-          c.lineTo(cx + i * 14 - 5, cy - 4);
-          c.stroke();
-        }
-        c.fillStyle = "#ffffff";
-        c.beginPath();
-        c.arc(cx - 8, cy + 4, 2.6, 0, Math.PI * 2);
-        c.fill();
-        c.beginPath();
-        c.arc(cx + 6, cy + 10, 1.8, 0, Math.PI * 2);
-        c.fill();
-        break;
-      }
-      case 1: {
-        // Çiçek (ilkbahar)
-        c.strokeStyle = "#3a7d3a";
-        c.lineWidth = 2.5;
-        c.beginPath();
-        c.moveTo(cx, cy + 16);
-        c.lineTo(cx, cy - 4);
-        c.stroke();
-        const petals = ["#ee7fb0", "#ffb84d", "#d07af0", "#8a9cff"];
-        for (let i = 0; i < 4; i++) {
-          const pg = c.createRadialGradient(cx + (i - 1.5) * 11, cy - 12, 1, cx + (i - 1.5) * 11, cy - 10, 6);
-          pg.addColorStop(0, "#fff0f6");
-          pg.addColorStop(0.5, petals[i]);
-          pg.addColorStop(1, shade(petals[i], -25));
-          c.fillStyle = pg;
-          c.beginPath();
-          c.arc(cx + (i - 1.5) * 11, cy - 10, 6, 0, Math.PI * 2);
-          c.fill();
-        }
-        const center = c.createRadialGradient(cx, cy - 10, 0.5, cx, cy - 10, 3);
-        center.addColorStop(0, "#fffbe0");
-        center.addColorStop(1, "#f5c34a");
-        c.fillStyle = center;
-        c.beginPath();
-        c.arc(cx, cy - 10, 3, 0, Math.PI * 2);
-        c.fill();
-        break;
-      }
-      case 2: {
-        // Güneş (yaz)
-        const sun = c.createRadialGradient(cx - 3, cy - 3, 1, cx, cy, 14);
-        sun.addColorStop(0, "#fffbe0");
-        sun.addColorStop(0.55, "#ffcf33");
-        sun.addColorStop(1, "#f0971a");
-        c.fillStyle = sun;
-        c.beginPath();
-        c.arc(cx, cy, 12, 0, Math.PI * 2);
-        c.fill();
-        c.strokeStyle = "#f0a020";
-        c.lineWidth = 4;
-        for (let i = 0; i < 8; i++) {
-          const a = (i / 8) * Math.PI * 2;
-          c.beginPath();
-          c.moveTo(cx + Math.cos(a) * 16, cy + Math.sin(a) * 16);
-          c.lineTo(cx + Math.cos(a) * 24, cy + Math.sin(a) * 24);
-          c.stroke();
-        }
-        c.fillStyle = "rgba(255,255,255,0.8)";
-        c.beginPath();
-        c.arc(cx - 4, cy - 4, 2.6, 0, Math.PI * 2);
-        c.fill();
-        break;
-      }
-      case 3: {
-        // Yaprak (sonbahar)
-        const cols = ["#e8a33d", "#d06b2f", "#b8332f"];
-        for (let i = 0; i < 3; i++) {
-          const lg = c.createLinearGradient(0, cy - 4, 0, cy + 6);
-          lg.addColorStop(0, shade(cols[i], 20));
-          lg.addColorStop(1, shade(cols[i], -30));
-          c.fillStyle = lg;
-          c.beginPath();
-          c.ellipse(cx - 14 + i * 14, cy + 2 - i * 2, 7, 4.5, -0.5 + i * 0.3, 0, Math.PI * 2);
-          c.fill();
-          c.strokeStyle = "rgba(90,40,10,0.4)";
-          c.lineWidth = 1;
-          c.beginPath();
-          c.moveTo(cx - 14 + i * 14 - 5, cy + 2 - i * 2);
-          c.lineTo(cx - 14 + i * 14 + 5, cy + 2 - i * 2 + 1);
-          c.stroke();
-        }
-        break;
-      }
-      case 4: {
-        // Çam ağacı
-        for (let i = 0; i < 3; i++) {
-          const yy = cy + 16 - i * 9;
-          const w = 22 - i * 6;
-          const cc = i % 2 ? "#178c3c" : "#2fa05a";
-          const cg = c.createLinearGradient(0, yy - 14, 0, yy + 6);
-          cg.addColorStop(0, shade(cc, 26));
-          cg.addColorStop(0.5, cc);
-          cg.addColorStop(1, shade(cc, -30));
-          c.fillStyle = cg;
-          c.beginPath();
-          c.moveTo(cx, yy - 12);
-          c.lineTo(cx + w, yy + 4);
-          c.lineTo(cx - w, yy + 4);
-          c.closePath();
-          c.fill();
-        }
-        const tg = c.createLinearGradient(0, cy + 16, 0, cy + 24);
-        tg.addColorStop(0, "#7a5a30");
-        tg.addColorStop(1, "#5a3d1a");
-        c.fillStyle = tg;
-        c.fillRect(cx - 3, cy + 16, 6, 8);
-        break;
-      }
-      case 5: {
-        // Yapraklı ağaç
-        c.strokeStyle = "#6b4a2a";
-        c.lineWidth = 3;
-        c.beginPath();
-        c.moveTo(cx, cy + 22);
-        c.lineTo(cx, cy + 4);
-        c.stroke();
-        const crown = c.createRadialGradient(cx - 4, cy - 6, 2, cx, cy - 2, 14);
-        crown.addColorStop(0, "#5ad489");
-        crown.addColorStop(0.6, "#2f9e5f");
-        crown.addColorStop(1, "#187a41");
-        c.fillStyle = crown;
-        c.beginPath();
-        c.arc(cx, cy - 2, 13, 0, Math.PI * 2);
-        c.fill();
-        const bloom = c.createRadialGradient(cx - 6, cy - 8, 1, cx - 6, cy - 6, 6);
-        bloom.addColorStop(0, "#8fe8ac");
-        bloom.addColorStop(1, "#3cc873");
-        c.fillStyle = bloom;
-        c.beginPath();
-        c.arc(cx - 6, cy - 6, 6, 0, Math.PI * 2);
-        c.fill();
-        break;
-      }
-      case 6: {
-        // Meyve ağacı
-        c.strokeStyle = "#6b4a2a";
-        c.lineWidth = 3;
-        c.beginPath();
-        c.moveTo(cx, cy + 22);
-        c.lineTo(cx, cy + 6);
-        c.stroke();
-        const crown = c.createRadialGradient(cx - 4, cy - 4, 2, cx, cy, 13);
-        crown.addColorStop(0, "#5ad489");
-        crown.addColorStop(0.6, "#2f9e5f");
-        crown.addColorStop(1, "#187a41");
-        c.fillStyle = crown;
-        c.beginPath();
-        c.arc(cx, cy, 12, 0, Math.PI * 2);
-        c.fill();
-        for (const [fx, fy] of [[-6, -4], [4, -7], [0, 5], [7, 3]] as Array<[number, number]>) {
-          const fg = c.createRadialGradient(cx + fx - 1, cy + fy - 1, 0.5, cx + fx, cy + fy, 3);
-          fg.addColorStop(0, "#ff9d9d");
-          fg.addColorStop(1, "#c21f1f");
-          c.fillStyle = fg;
-          c.beginPath();
-          c.arc(cx + fx, cy + fy, 3, 0, Math.PI * 2);
-          c.fill();
-        }
-        break;
-      }
-      default: {
-        // Kiraz çiçeği ağacı (7)
-        c.strokeStyle = "#5c4433";
-        c.lineWidth = 3;
-        c.beginPath();
-        c.moveTo(cx, cy + 22);
-        c.lineTo(cx, cy + 6);
-        c.stroke();
-        const crown = c.createRadialGradient(cx - 4, cy - 5, 2, cx, cy - 1, 14);
-        crown.addColorStop(0, "#ffdcec");
-        crown.addColorStop(0.6, "#f0a0c0");
-        crown.addColorStop(1, "#d0709a");
-        c.fillStyle = crown;
-        c.beginPath();
-        c.arc(cx, cy - 1, 13, 0, Math.PI * 2);
-        c.fill();
-        const bloom = c.createRadialGradient(cx - 6, cy - 8, 1, cx - 6, cy - 6, 7);
-        bloom.addColorStop(0, "#ffffff");
-        bloom.addColorStop(1, "#ffb8d6");
-        c.fillStyle = bloom;
-        c.beginPath();
-        c.arc(cx - 6, cy - 6, 7, 0, Math.PI * 2);
-        c.fill();
-        c.fillStyle = "#fff";
-        for (const [fx, fy] of [[-4, -4], [4, -6], [1, 3]] as Array<[number, number]>) {
-          c.beginPath();
-          c.arc(cx + fx, cy + fy, 2, 0, Math.PI * 2);
-          c.fill();
-        }
-        break;
-      }
+    c.fillStyle = "#2e8b57";
+    c.beginPath();
+    c.roundRect(x, y, sw, shh, sw * 0.45);
+    c.fill();
+    c.strokeStyle = "rgba(20,60,35,0.8)";
+    c.lineWidth = Math.max(1, sw * 0.14);
+    c.stroke();
+    c.strokeStyle = "rgba(253,243,218,0.9)";
+    c.lineWidth = Math.max(1, sw * 0.16);
+    for (const f of [0.3, 0.7]) {
+      c.beginPath();
+      c.moveTo(x + sw * 0.1, y + shh * f);
+      c.lineTo(x + sw * 0.9, y + shh * f);
+      c.stroke();
     }
     c.restore();
   }
-
 
   private drawTile(
     c: CanvasRenderingContext2D,
@@ -2138,11 +1775,11 @@ export class Game {
     selected: boolean,
     canTake: boolean,
   ): void {
-    const w = TILE_W;
-    const h = TILE_H;
+    const w = this.tw;
+    const h = this.th;
     const x = t.sx - w / 2;
     const yTop = t.sy - h / 2;
-    const R = 9;
+    const R = Math.max(4, Math.round(w * 0.125));
 
     // ---- Renk paleti (acik = fildisi, kapali = koyu duman) ----
     const face = open ? "#f2e3c0" : "#1f4a37";
@@ -2175,22 +1812,22 @@ export class Game {
       ig.addColorStop(1, innerBot);
       c.fillStyle = ig;
       c.beginPath();
-      c.roundRect(x + 7, yTop + 9, w - 14, h - 18, R - 2);
+      c.roundRect(x + w * 0.1, yTop + h * 0.09, w - w * 0.2, h - h * 0.18, R - 2);
       c.fill();
       // Ic gogei (ustte hafif kucuk)
-      const sh = c.createLinearGradient(0, yTop + 9, 0, yTop + 34);
+      const sh = c.createLinearGradient(0, yTop + h * 0.09, 0, yTop + h * 0.34);
       sh.addColorStop(0, "rgba(0,0,0,0.06)");
       sh.addColorStop(1, "rgba(0,0,0,0)");
       c.fillStyle = sh;
       c.beginPath();
-      c.roundRect(x + 7, yTop + 9, w - 14, 25, R - 2);
+      c.roundRect(x + w * 0.1, yTop + h * 0.09, w - w * 0.2, h * 0.25, R - 2);
       c.fill();
       // Ust kenar parlaklik cizgisi (madalyon)
       c.strokeStyle = "rgba(255,255,255,0.55)";
       c.lineWidth = 1;
       c.beginPath();
-      c.moveTo(x + 10, yTop + 11);
-      c.lineTo(x + w - 10, yTop + 11);
+      c.moveTo(x + w * 0.14, yTop + h * 0.11);
+      c.lineTo(x + w - w * 0.14, yTop + h * 0.11);
       c.stroke();
     } else {
       c.save();
@@ -2198,10 +1835,10 @@ export class Game {
       c.strokeStyle = "#ffffff";
       c.lineWidth = 1.2;
       for (let i = -1; i < 5; i++) {
-        const off = x + i * 12;
+        const off = x + i * w * 0.17;
         c.beginPath();
         c.moveTo(off, yTop);
-        c.lineTo(off + 11, yTop + h);
+        c.lineTo(off + w * 0.16, yTop + h);
         c.stroke();
       }
       c.restore();
@@ -2230,61 +1867,9 @@ export class Game {
     c.roundRect(x, yTop, w, h, R);
     c.stroke();
 
-    // ---- Taş yüzü: rün (normal) / mevsim+ağaç (101. seviye) ----
-    const art = this.specialArt();
-    if (art === "mixed" && t.symbol < 8) {
-      this.drawSeasonIcon(c, t, open);
-    } else if (art === "mixed" && t.symbol < 16) {
-      this.drawAnimalIcon(c, t, open);
-    } else {
-      c.font =
-        (open ? "bold 42px " : "bold 26px ") +
-        "'Segoe UI Historic','Noto Sans Old Turkic',serif";
-      c.textAlign = "center";
-      c.textBaseline = "middle";
-      if (open && canTake) {
-        const rc = RUNE_COLORS[t.symbol];
-        const rg = c.createLinearGradient(0, t.sy - 15, 0, t.sy + 17);
-        rg.addColorStop(0, shade(rc, 42));
-        rg.addColorStop(0.5, rc);
-        rg.addColorStop(1, shade(rc, -36));
-        const glow = c.createRadialGradient(t.sx, t.sy, 2, t.sx, t.sy, 34);
-        glow.addColorStop(0, rc);
-        glow.addColorStop(1, "transparent");
-        c.globalAlpha = 0.32;
-        c.fillStyle = glow;
-        c.beginPath();
-        c.arc(t.sx, t.sy, 34, 0, Math.PI * 2);
-        c.fill();
-        c.globalAlpha = 1;
-        c.save();
-        c.shadowColor = "rgba(0,0,0,0.75)";
-        c.shadowBlur = 4;
-        c.shadowOffsetY = 2;
-        c.lineJoin = "round";
-        c.lineWidth = 5;
-        c.strokeStyle = "rgba(22,28,16,0.9)";
-        c.strokeText(RUNES[t.symbol], t.sx, t.sy);
-        c.fillStyle = rg;
-        c.fillText(RUNES[t.symbol], t.sx, t.sy);
-        c.restore();
-      } else {
-        const rc = RUNE_COLORS[t.symbol];
-        const rg = c.createLinearGradient(0, t.sy - 15, 0, t.sy + 17);
-        rg.addColorStop(0, shade(rc, 42));
-        rg.addColorStop(0.5, rc);
-        rg.addColorStop(1, shade(rc, -36));
-        c.save();
-        c.lineJoin = "round";
-        c.lineWidth = 4;
-        c.strokeStyle = "rgba(22,28,16,0.8)";
-        c.strokeText(RUNES[t.symbol], t.sx, t.sy);
-        c.globalAlpha = open ? 1 : 0.5;
-        c.fillStyle = rg;
-        c.fillText(RUNES[t.symbol], t.sx, t.sy);
-        c.restore();
-      }
-    }
+    // ---- Tas yuzu: standart mahjong deseni (bambu / daire / karakter /
+    //      ruzgar / ejderha / cicek / mevsim) ----
+    this.drawFace(c, t, open, canTake);
 
     // ---- Taş yüzü sanatsal ışıklandırma (cam vurgusu + iç gölge) ----
     if (open) {

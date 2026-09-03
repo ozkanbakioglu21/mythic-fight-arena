@@ -49,7 +49,7 @@ export default function App() {
             <div className="win-title">Başardın!</div>
             <div className="win-sub">
               Seviye {hud?.levelName}: {hud?.score} puanda, {hud?.moves}{" "}
-              hamlede, {hud?.seconds} saniyede tüm rünleri eşleştirdin.
+              hamlede, {hud?.seconds} saniyede tüm taşları eşleştirdin.
             </div>
             <div
               className="win-stars"
