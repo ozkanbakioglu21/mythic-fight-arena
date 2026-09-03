@@ -48,18 +48,11 @@ export interface HudState {
   cleanWin: boolean;
 }
 
-// Göktürk rünleri (Orhun alfabesi). Her biri bir "aile" = 4 taş.
+// Göktürk rünleri (Orhun alfabesi) — arka plan motifleri için.
 const RUNES = [
   "𐰀", "𐰆", "𐰉", "𐰒", "𐰤", "𐰞", "𐰱", "𐰾",
   "𐰋", "𐰑", "𐰚", "𐰃", "𐰅", "𐰇", "𐰈", "𐰢",
   "𐰁", "𐰂", "𐰗", "𐰜",
-];
-
-// Her rün sembolüne özel renk (açık taş üzerinde okunaklı, doygun tonlar).
-const RUNE_COLORS = [
-  "#c0392b", "#e07b39", "#2e86c1", "#27ae60", "#8e44ad", "#d35400", "#16a085", "#7d3c98",
-  "#c1286f", "#6c8e23", "#e8432f", "#0e7ac7", "#9b5de5", "#f1a208", "#0ca3b2", "#7d4fd6",
-  "#6f4e37", "#4a148c", "#b0990a", "#0b7285",
 ];
 // Standart mahjong seti (144 tas):
 //   Sayilar (108): bambu b1-b9, daire c1-c9, karakter w1-w9 (her turunden 4 adet)
@@ -351,6 +344,13 @@ export class Game {
   private tw = 72;
   private th = 100;
   private gap = 10;
+  private flash = 0;
+  private wonAt = 0;
+  private dealAt = -1;
+  private dealDelay = new Map<number, number>();
+  private confetti: Array<{ x: number; y: number; vx: number; vy: number; rot: number; vr: number; w: number; h: number; color: string; life: number; max: number }> = [];
+  private stars: Array<{ x: number; y: number; r: number; ph: number; sp: number }> = [];
+  private embers: Array<{ x: number; y: number; vy: number; ph: number; r: number }> = [];
 
   onHud?: (h: HudState) => void;
 
@@ -358,6 +358,24 @@ export class Game {
     canvas.width = CANVAS_W;
     canvas.height = CANVAS_H;
     this.ctx = canvas.getContext("2d")!;
+    for (let i = 0; i < 46; i++) {
+      this.stars.push({
+        x: 20 + Math.random() * (CANVAS_W - 40),
+        y: 95 + Math.random() * 330,
+        r: 0.6 + Math.random() * 1.4,
+        ph: Math.random() * 6.28,
+        sp: 0.8 + Math.random() * 2.2,
+      });
+    }
+    for (let i = 0; i < 9; i++) {
+      this.embers.push({
+        x: 30 + (Math.random() - 0.5) * 36,
+        y: 1201 - Math.random() * 70,
+        vy: 14 + Math.random() * 18,
+        ph: Math.random() * 6.28,
+        r: 1 + Math.random() * 1.6,
+      });
+    }
     this.newGame();
   }
 
@@ -497,6 +515,10 @@ export class Game {
       const sl = slots[i];
       this.tiles.push(this.makeTile(assigned[i], sl.c, sl.r, sl.L));
     }
+    // Taslarin tahtaya sirayla konma animasyonu (alt katmanlardan baslar).
+    this.dealDelay = new Map<number, number>();
+    this.tiles.forEach((t, i) => this.dealDelay.set(t.id, i * 0.012));
+    this.dealAt = this.time;
   }
 
   /** Kaldirma sirasini simule eder: her adimda acik bir cift secip havada
@@ -597,6 +619,9 @@ export class Game {
     this.shards = [];
     this.shuffleCount = 0;
     this.hintIds = [];
+    this.confetti = [];
+    this.flash = 0;
+    this.wonAt = 0;
     this.fates = this.rollFates();
     this.buildLayout();
     this.emitHud();
@@ -719,8 +744,25 @@ export class Game {
     // Kazanma.
     if (this.tiles.every((t) => t.removed)) {
       this.won = true;
+      this.wonAt = this.time;
       this.sfx("win");
       this.recordProgress();
+      const cc = ["#ffd75e", "#e74c3c", "#2e8b57", "#3498db", "#e67e22", "#f8f1e0"];
+      for (let i = 0; i < 140; i++) {
+        this.confetti.push({
+          x: Math.random() * CANVAS_W,
+          y: -20 - Math.random() * 420,
+          vx: (Math.random() - 0.5) * 90,
+          vy: 90 + Math.random() * 160,
+          rot: Math.random() * Math.PI,
+          vr: (Math.random() - 0.5) * 8,
+          w: 5 + Math.random() * 6,
+          h: 8 + Math.random() * 8,
+          color: cc[Math.floor(Math.random() * cc.length)],
+          life: 6 + Math.random() * 3,
+          max: 9,
+        });
+      }
       if (this.shuffleCount === 0) {
         this.score += 500;
         this.floats.push({ x: CANVAS_W / 2, y: CANVAS_H / 2 - 40, life: 1.4, max: 1.4, text: "Temiz Zafer! +500", color: "#ffd75e" });
@@ -763,125 +805,28 @@ export class Game {
     this.floats = this.floats.filter((f) => f.life > 0);
     for (const pp of this.pops) pp.life -= dt;
     this.pops = this.pops.filter((pp) => pp.life > 0);
-    // Kazaninca kutlama kivilcimlari fiskirir.
-    if (this.won) {
-      for (let k = 0; k < 2; k++) {
-        const ang = Math.random() * Math.PI * 2;
-        const spd = 60 + Math.random() * 200;
-        this.bursts.push({
-          x: CANVAS_W / 2 + (Math.random() - 0.5) * 320,
-          y: CANVAS_H - 120 + Math.random() * 60,
-          vx: Math.cos(ang) * spd,
-          vy: Math.sin(ang) * spd - 140,
-          life: 0.6 + Math.random() * 0.6,
-          max: 1,
-          color: RUNE_COLORS[Math.floor(Math.random() * RUNE_COLORS.length)],
-          r: 4 + Math.random() * 6,
-        });
+    // Ekran parlama sonumu
+    if (this.flash > 0) this.flash = Math.max(0, this.flash - dt * 1.8);
+    // Ocak kizarlari yukari suruklenir
+    for (const e of this.embers) {
+      e.y -= e.vy * dt;
+      e.x += Math.sin(this.time * 3 + e.ph) * 14 * dt;
+      if (e.y < 1117) {
+        e.y = 1201 + Math.random() * 8;
+        e.x = 30 + (Math.random() - 0.5) * 36;
+        e.vy = 14 + Math.random() * 18;
+        e.ph = Math.random() * 6.28;
       }
     }
-    // Kazaninca kutlama kivilcimlari fiskirir.
-    if (this.won) {
-      for (let k = 0; k < 2; k++) {
-        const ang = Math.random() * Math.PI * 2;
-        const spd = 60 + Math.random() * 200;
-        this.bursts.push({
-          x: CANVAS_W / 2 + (Math.random() - 0.5) * 320,
-          y: CANVAS_H - 120 + Math.random() * 60,
-          vx: Math.cos(ang) * spd,
-          vy: Math.sin(ang) * spd - 140,
-          life: 0.6 + Math.random() * 0.6,
-          max: 1,
-          color: RUNE_COLORS[Math.floor(Math.random() * RUNE_COLORS.length)],
-          r: 4 + Math.random() * 6,
-        });
-      }
+    // Konfeti parcalari
+    for (const p of this.confetti) {
+      p.life -= dt;
+      p.vy += 40 * dt;
+      p.x += p.vx * dt + Math.sin(this.time * 3 + p.rot * 5) * 30 * dt;
+      p.y += p.vy * dt;
+      p.rot += p.vr * dt;
     }
-    // Kazaninca kutlama kivilcimlari fiskirir.
-    if (this.won) {
-      for (let k = 0; k < 2; k++) {
-        const ang = Math.random() * Math.PI * 2;
-        const spd = 60 + Math.random() * 200;
-        this.bursts.push({
-          x: CANVAS_W / 2 + (Math.random() - 0.5) * 320,
-          y: CANVAS_H - 120 + Math.random() * 60,
-          vx: Math.cos(ang) * spd,
-          vy: Math.sin(ang) * spd - 140,
-          life: 0.6 + Math.random() * 0.6,
-          max: 1,
-          color: RUNE_COLORS[Math.floor(Math.random() * RUNE_COLORS.length)],
-          r: 4 + Math.random() * 6,
-        });
-      }
-    }
-    // Kazaninca kutlama kivilcimlari fiskirir.
-    if (this.won) {
-      for (let k = 0; k < 2; k++) {
-        const ang = Math.random() * Math.PI * 2;
-        const spd = 60 + Math.random() * 200;
-        this.bursts.push({
-          x: CANVAS_W / 2 + (Math.random() - 0.5) * 320,
-          y: CANVAS_H - 120 + Math.random() * 60,
-          vx: Math.cos(ang) * spd,
-          vy: Math.sin(ang) * spd - 140,
-          life: 0.6 + Math.random() * 0.6,
-          max: 1,
-          color: RUNE_COLORS[Math.floor(Math.random() * RUNE_COLORS.length)],
-          r: 4 + Math.random() * 6,
-        });
-      }
-    }
-    // Kazaninca kutlama kivilcimlari fiskirir.
-    if (this.won) {
-      for (let k = 0; k < 2; k++) {
-        const ang = Math.random() * Math.PI * 2;
-        const spd = 60 + Math.random() * 200;
-        this.bursts.push({
-          x: CANVAS_W / 2 + (Math.random() - 0.5) * 320,
-          y: CANVAS_H - 120 + Math.random() * 60,
-          vx: Math.cos(ang) * spd,
-          vy: Math.sin(ang) * spd - 140,
-          life: 0.6 + Math.random() * 0.6,
-          max: 1,
-          color: RUNE_COLORS[Math.floor(Math.random() * RUNE_COLORS.length)],
-          r: 4 + Math.random() * 6,
-        });
-      }
-    }
-    // Kazaninca kutlama kivilcimlari fiskirir.
-    if (this.won) {
-      for (let k = 0; k < 2; k++) {
-        const ang = Math.random() * Math.PI * 2;
-        const spd = 60 + Math.random() * 200;
-        this.bursts.push({
-          x: CANVAS_W / 2 + (Math.random() - 0.5) * 320,
-          y: CANVAS_H - 120 + Math.random() * 60,
-          vx: Math.cos(ang) * spd,
-          vy: Math.sin(ang) * spd - 140,
-          life: 0.6 + Math.random() * 0.6,
-          max: 1,
-          color: RUNE_COLORS[Math.floor(Math.random() * RUNE_COLORS.length)],
-          r: 4 + Math.random() * 6,
-        });
-      }
-    }
-    // Kazaninca kutlama kivilcimlari fiskirir.
-    if (this.won) {
-      for (let k = 0; k < 2; k++) {
-        const ang = Math.random() * Math.PI * 2;
-        const spd = 60 + Math.random() * 200;
-        this.bursts.push({
-          x: CANVAS_W / 2 + (Math.random() - 0.5) * 320,
-          y: CANVAS_H - 120 + Math.random() * 60,
-          vx: Math.cos(ang) * spd,
-          vy: Math.sin(ang) * spd - 140,
-          life: 0.6 + Math.random() * 0.6,
-          max: 1,
-          color: RUNE_COLORS[Math.floor(Math.random() * RUNE_COLORS.length)],
-          r: 4 + Math.random() * 6,
-        });
-      }
-    }
+    this.confetti = this.confetti.filter((p) => p.life > 0 && p.y < CANVAS_H + 40);
   }
 
   /** Haznedeki 4 taşı parçalara ayırıp patlatır ve hazneyi boşaltır. */
@@ -933,6 +878,7 @@ export class Game {
     this.tray.splice(b, 1);
     this.tray.splice(a, 1);
     this.combo++;
+    if (this.combo >= 3) this.flash = Math.min(0.6, 0.25 + this.combo * 0.05);
     this.comboTimer = this.comboDuration();
     this.score += Math.round(100 * Math.min(this.combo, 10) * this.scoreMult());
   }
@@ -1184,6 +1130,148 @@ export class Game {
 
   /** Göktürk motifleri: arka plan rünleri, altın tonlu bantlar (bir kez çizilip önbelleğe alınır). */
   /** Göktürk obası sahnesi + motifler (bir kez çizilip önbelleğe alınır). */
+  /** Gokyuzunde suruklenen Goekturk kartali (kanat acik). */
+  private drawEagle(c: CanvasRenderingContext2D, cx: number, cy: number, su: number): void {
+    c.beginPath();
+    c.moveTo(cx, cy - 14 * su);
+    c.quadraticCurveTo(cx + 3 * su, cy - 8 * su, cx + 9 * su, cy - 3 * su);
+    c.lineTo(cx + 7 * su, cy + 3 * su);
+    c.lineTo(cx + 11 * su, cy + 12 * su);
+    c.lineTo(cx + 4 * su, cy + 8 * su);
+    c.lineTo(cx, cy + 10 * su);
+    c.lineTo(cx - 4 * su, cy + 8 * su);
+    c.lineTo(cx - 11 * su, cy + 12 * su);
+    c.lineTo(cx - 7 * su, cy + 3 * su);
+    c.lineTo(cx - 9 * su, cy - 3 * su);
+    c.closePath();
+    c.fill();
+    c.beginPath();
+    c.moveTo(cx - 7 * su, cy - 4 * su);
+    c.quadraticCurveTo(cx - 30 * su, cy - 24 * su, cx - 42 * su, cy - 10 * su);
+    c.quadraticCurveTo(cx - 27 * su, cy - 7 * su, cx - 9 * su, cy + 1 * su);
+    c.closePath();
+    c.fill();
+    c.beginPath();
+    c.moveTo(cx + 7 * su, cy - 4 * su);
+    c.quadraticCurveTo(cx + 30 * su, cy - 24 * su, cx + 42 * su, cy - 10 * su);
+    c.quadraticCurveTo(cx + 27 * su, cy - 7 * su, cx + 9 * su, cy + 1 * su);
+    c.closePath();
+    c.fill();
+  }
+
+  /** Canli atmosfer: yildizlar, ay, sis, ocak alevi + kizarlar, kartal. */
+  private drawAmbient(c: CanvasRenderingContext2D): void {
+    const t = this.time;
+
+    // Parlayan yildizlar (nefes alir).
+    for (const st of this.stars) {
+      const a = (0.25 + 0.55 * (0.5 + 0.5 * Math.sin(t * st.sp + st.ph))) * 0.5;
+      c.fillStyle = "rgba(235,242,255," + a.toFixed(3) + ")";
+      c.beginPath();
+      c.arc(st.x, st.y, st.r, 0, Math.PI * 2);
+      c.fill();
+    }
+
+    // Ay: yavas nefes alan parilti + krater izleri.
+    const mx = 590;
+    const my = 128;
+    const moonA = 0.5 + 0.08 * Math.sin(t * 0.6);
+    const mg = c.createRadialGradient(mx, my, 4, mx, my, 60);
+    mg.addColorStop(0, "rgba(240,240,225," + (0.5 * moonA).toFixed(3) + ")");
+    mg.addColorStop(0.4, "rgba(240,240,225," + (0.18 * moonA).toFixed(3) + ")");
+    mg.addColorStop(1, "rgba(240,240,225,0)");
+    c.fillStyle = mg;
+    c.beginPath();
+    c.arc(mx, my, 60, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = "rgba(245,244,230," + (0.85 * moonA).toFixed(3) + ")";
+    c.beginPath();
+    c.arc(mx, my, 20, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = "rgba(180,185,175,0.25)";
+    c.beginPath();
+    c.arc(mx - 6, my - 4, 4, 0, Math.PI * 2);
+    c.fill();
+    c.beginPath();
+    c.arc(mx + 7, my + 6, 3, 0, Math.PI * 2);
+    c.fill();
+
+    // Dagsilarin arasinda kayan sis bantlari.
+    const mist = (y: number, speed: number, phase: number, alpha: number) => {
+      const x = ((t * speed + phase * 900) % (CANVAS_W + 520)) - 260;
+      c.save();
+      c.translate(x, y);
+      c.scale(2.4, 0.42);
+      const g = c.createRadialGradient(0, 0, 10, 0, 0, 200);
+      g.addColorStop(0, "rgba(200,220,235," + alpha + ")");
+      g.addColorStop(1, "rgba(200,220,235,0)");
+      c.fillStyle = g;
+      c.beginPath();
+      c.arc(0, 0, 200, 0, Math.PI * 2);
+      c.fill();
+      c.restore();
+    };
+    mist(430, 9, 0, 0.05);
+    mist(520, 6.5, 0.5, 0.06);
+    mist(610, 7.5, 0.8, 0.05);
+
+    // Ufukta sicak isik (bozkur akşamı, yavas nefes).
+    const warmA = 0.05 + 0.02 * Math.sin(t * 0.35);
+    const wg = c.createLinearGradient(0, 290, 0, 580);
+    wg.addColorStop(0, "rgba(255,170,80,0)");
+    wg.addColorStop(0.6, "rgba(255,170,80," + warmA.toFixed(3) + ")");
+    wg.addColorStop(1, "rgba(255,140,60,0)");
+    c.fillStyle = wg;
+    c.fillRect(0, 290, CANVAS_W, 290);
+
+    // Ocak alevi: titreyen katmanlar + hale + kizarlar (sol-alt kose, bozkir otunun basinda).
+    const fx = 30;
+    const fy = 1205;
+    const f1 = 46 + Math.sin(t * 9.7) * 5 + Math.sin(t * 15.3 + 1.2) * 3;
+    const f2 = 28 + Math.sin(t * 11.1 + 0.6) * 4;
+    const fsw = Math.sin(t * 7.3) * 3;
+    c.save();
+    c.globalAlpha = 0.55;
+    c.fillStyle = "rgba(255,160,50,0.55)";
+    c.beginPath();
+    c.moveTo(fx - 16, fy);
+    c.quadraticCurveTo(fx - 6 + fsw, fy - f1 * 0.7, fx + fsw, fy - f1);
+    c.quadraticCurveTo(fx + 8 + fsw, fy - f1 * 0.55, fx + 18, fy);
+    c.closePath();
+    c.fill();
+    c.fillStyle = "rgba(255,220,120,0.7)";
+    c.beginPath();
+    c.moveTo(fx - 9, fy);
+    c.quadraticCurveTo(fx - 2 + fsw * 0.6, fy - f2 * 0.8, fx + fsw * 0.6, fy - f2);
+    c.quadraticCurveTo(fx + 4 + fsw * 0.6, fy - f2 * 0.5, fx + 11, fy);
+    c.closePath();
+    c.fill();
+    c.restore();
+    const fg = c.createRadialGradient(fx, fy - 14, 4, fx, fy - 14, 70);
+    fg.addColorStop(0, "rgba(255,170,70," + (0.1 + 0.03 * Math.sin(t * 12.7)).toFixed(3) + ")");
+    fg.addColorStop(1, "rgba(255,170,70,0)");
+    c.fillStyle = fg;
+    c.beginPath();
+    c.arc(fx, fy - 14, 70, 0, Math.PI * 2);
+    c.fill();
+    for (const e of this.embers) {
+      const ea = Math.max(0, Math.min(1, (e.y - (fy - 88)) / 88)) * 0.8;
+      c.fillStyle = "rgba(255,190,90," + ea.toFixed(3) + ")";
+      c.beginPath();
+      c.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+      c.fill();
+    }
+
+    // Gokyuzunde yavas suruklenen kartal.
+    const ex = CANVAS_W - 150 + Math.sin(t * 0.13) * 46;
+    const ey = 140 + Math.sin(t * 0.31) * 9;
+    c.save();
+    c.globalAlpha = 0.5;
+    c.fillStyle = "rgba(22,28,40,0.45)";
+    this.drawEagle(c, ex, ey, 1);
+    c.restore();
+  }
+
   private drawMotifs(c: CanvasRenderingContext2D): void {
     if (!this.motifsCache) {
       const off = document.createElement("canvas");
@@ -1275,26 +1363,6 @@ export class Game {
       yurt(1050, 665, 180, 130);
       m.restore();
 
-      // ---- Ateş / ocak (solda, yurt önünde) ----
-      m.save();
-      m.globalAlpha = 0.5;
-      const fireX = 470;
-      const fireY = 668;
-      m.fillStyle = "rgba(230,150,60,0.35)";
-      m.beginPath();
-      m.moveTo(fireX - 14, fireY);
-      m.quadraticCurveTo(fireX - 4, fireY - 34, fireX, fireY - 46);
-      m.quadraticCurveTo(fireX + 6, fireY - 30, fireX + 16, fireY);
-      m.closePath();
-      m.fill();
-      m.fillStyle = "rgba(250,210,120,0.35)";
-      m.beginPath();
-      m.moveTo(fireX - 8, fireY);
-      m.quadraticCurveTo(fireX - 2, fireY - 20, fireX, fireY - 28);
-      m.quadraticCurveTo(fireX + 4, fireY - 18, fireX + 10, fireY);
-      m.closePath();
-      m.fill();
-      m.restore();
 
       // ---- Bozkır çimenleri (rüzgârda eğilen ot demetleri) ----
       m.save();
@@ -1314,39 +1382,6 @@ export class Game {
       for (let i = 0; i < 6; i++) grass(CANVAS_W - 210 + i * 28, 1210 + (i % 2) * 8);
       m.restore();
 
-      // ---- Gökyüzünde süzülen Göktürk kartalı (kanat açık) ----
-      m.save();
-      m.globalAlpha = 0.5;
-      m.fillStyle = "rgba(22,28,40,0.45)";
-      const eagle = (cx: number, cy: number, su: number) => {
-        m.beginPath();
-        m.moveTo(cx, cy - 14 * su);
-        m.quadraticCurveTo(cx + 3 * su, cy - 8 * su, cx + 9 * su, cy - 3 * su);
-        m.lineTo(cx + 7 * su, cy + 3 * su);
-        m.lineTo(cx + 11 * su, cy + 12 * su);
-        m.lineTo(cx + 4 * su, cy + 8 * su);
-        m.lineTo(cx, cy + 10 * su);
-        m.lineTo(cx - 4 * su, cy + 8 * su);
-        m.lineTo(cx - 11 * su, cy + 12 * su);
-        m.lineTo(cx - 7 * su, cy + 3 * su);
-        m.lineTo(cx - 9 * su, cy - 3 * su);
-        m.closePath();
-        m.fill();
-        m.beginPath();
-        m.moveTo(cx - 7 * su, cy - 4 * su);
-        m.quadraticCurveTo(cx - 30 * su, cy - 24 * su, cx - 42 * su, cy - 10 * su);
-        m.quadraticCurveTo(cx - 27 * su, cy - 7 * su, cx - 9 * su, cy + 1 * su);
-        m.closePath();
-        m.fill();
-        m.beginPath();
-        m.moveTo(cx + 7 * su, cy - 4 * su);
-        m.quadraticCurveTo(cx + 30 * su, cy - 24 * su, cx + 42 * su, cy - 10 * su);
-        m.quadraticCurveTo(cx + 27 * su, cy - 7 * su, cx + 9 * su, cy + 1 * su);
-        m.closePath();
-        m.fill();
-      };
-      eagle(CANVAS_W - 150, 210, 1);
-      m.restore();
 
       // ---- Zayıf arka plan rünleri (su izi) ----
       m.save();
@@ -1416,6 +1451,13 @@ export class Game {
     c.fillStyle = g;
     c.fillRect(0, 0, CANVAS_W, CANVAS_H);
     this.drawMotifs(c);
+    this.drawAmbient(c);
+    // Sinematik vinyet (kenar karartma).
+    const vg = c.createRadialGradient(CANVAS_W / 2, CANVAS_H * 0.46, CANVAS_H * 0.28, CANVAS_W / 2, CANVAS_H * 0.5, CANVAS_H * 0.78);
+    vg.addColorStop(0, "rgba(0,0,0,0)");
+    vg.addColorStop(1, "rgba(4,8,14,0.42)");
+    c.fillStyle = vg;
+    c.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
     // Başlık + seviye (üstte ortalanmış).
     c.fillStyle = "#d4e8f2";
@@ -1463,7 +1505,20 @@ export class Game {
       if (t.removed) continue;
       const open = this.isOpen(t);
       const sel = t.id === this.selectedId;
-      this.drawTile(c, t, open, sel, open && this.sideFree(t));
+      let dk = 1;
+      if (this.dealAt >= 0) {
+        dk = Math.max(0, Math.min(1, (this.time - this.dealAt - (this.dealDelay.get(t.id) ?? 0)) / 0.22));
+      }
+      if (dk <= 0) continue;
+      if (dk < 1) {
+        const e = 1 - Math.pow(1 - dk, 3);
+        c.save();
+        c.globalAlpha = e;
+        this.drawTile(c, { ...t, sy: t.sy - (1 - e) * 46 }, open, sel, open && this.sideFree(t));
+        c.restore();
+      } else {
+        this.drawTile(c, t, open, sel, open && this.sideFree(t));
+      }
     }
     this.drawHint(c);
 
@@ -1608,16 +1663,32 @@ export class Game {
       c.fillRect(0, 0, CANVAS_W, CANVAS_H);
       c.textAlign = "center";
       c.textBaseline = "middle";
+      const c1 = 1.70158;
+      const c3 = c1 + 1;
+      const back = (k: number): number => (k <= 0 ? 0 : 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2));
+      const tk = back(Math.min(1, (this.time - this.wonAt) / 0.45));
+      c.save();
+      c.translate(CANVAS_W / 2, CANVAS_H / 2 - 120);
+      c.scale(Math.max(0.001, tk), Math.max(0.001, tk));
       c.font = "bold 64px Georgia";
       c.fillStyle = "#ffe08a";
-      c.fillText("Zafer!", CANVAS_W / 2, CANVAS_H / 2 - 120);
+      c.fillText("Zafer!", 0, 0);
+      c.restore();
       c.font = "bold 26px Georgia";
       c.fillStyle = "#cfe6f2";
       c.fillText("Tum taslar eslestirildi. Seviye tamamlandi!", CANVAS_W / 2, CANVAS_H / 2 - 60);
-      c.font = "bold 34px Georgia";
-      c.fillStyle = "#ffd75e";
       const starCount = this.calcStars();
-      c.fillText("★".repeat(starCount) + "☆".repeat(3 - starCount), CANVAS_W / 2, CANVAS_H / 2 - 18);
+      for (let i = 0; i < 3; i++) {
+        const e = back(Math.min(1, (this.time - this.wonAt - (0.35 + i * 0.2)) / 0.35));
+        if (e <= 0) continue;
+        c.save();
+        c.translate(CANVAS_W / 2 + (i - 1) * 40, CANVAS_H / 2 - 18);
+        c.scale(e, e);
+        c.font = "bold 34px Georgia";
+        c.fillStyle = i < starCount ? "#ffd75e" : "rgba(255,255,255,0.22)";
+        c.fillText(i < starCount ? "★" : "☆", 0, 0);
+        c.restore();
+      }
       c.font = "bold 19px Georgia";
       c.fillStyle = "#9fd0e0";
       c.fillText(`Puan: ${this.score}   Hamle: ${this.moves}   Süre: ${Math.floor(this.seconds)} sn`, CANVAS_W / 2, CANVAS_H / 2 + 24);
@@ -1636,6 +1707,22 @@ export class Game {
         c.fillStyle = "#ffd75e";
         c.fillText(bestLine, CANVAS_W / 2, CANVAS_H / 2 + 92);
       }
+    }
+
+    // Combo parlama (ekran geneline yayan altin flaş).
+    if (this.flash > 0) {
+      c.fillStyle = "rgba(255,205,90," + (this.flash * 0.16).toFixed(3) + ")";
+      c.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    }
+    // Konfeti (kagit parcalari gibi havada salinir).
+    for (const p of this.confetti) {
+      c.save();
+      c.globalAlpha = Math.min(1, p.life / 1.5);
+      c.translate(p.x, p.y);
+      c.rotate(p.rot);
+      c.fillStyle = p.color;
+      c.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * (0.45 + 0.55 * Math.abs(Math.sin(p.rot * 2))));
+      c.restore();
     }
   }
 
@@ -1659,8 +1746,9 @@ export class Game {
       c.beginPath();
       c.roundRect(bx - w / 2, by - h / 2, w, h, Math.max(4, Math.round(w * 0.125)));
       c.clip();
+      const pulse = 0.26 + 0.09 * Math.sin(this.time * 2.6 + t.x * 0.9 + t.y * 0.7);
       const glow = c.createRadialGradient(bx, by, w * 0.1, bx, by, w * 0.58);
-      glow.addColorStop(0, "rgba(255,214,110,0.30)");
+      glow.addColorStop(0, "rgba(255,214,110," + pulse.toFixed(3) + ")");
       glow.addColorStop(1, "rgba(255,214,110,0)");
       c.fillStyle = glow;
       c.fillRect(bx - w / 2, by - h / 2, w, h);
