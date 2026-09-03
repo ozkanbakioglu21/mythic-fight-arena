@@ -351,6 +351,8 @@ export class Game {
   private confetti: Array<{ x: number; y: number; vx: number; vy: number; rot: number; vr: number; w: number; h: number; color: string; life: number; max: number }> = [];
   private stars: Array<{ x: number; y: number; r: number; ph: number; sp: number }> = [];
   private embers: Array<{ x: number; y: number; vy: number; ph: number; r: number }> = [];
+  private lifts: Map<number, number> = new Map();
+  private hoverId: number | null = null;
 
   onHud?: (h: HudState) => void;
 
@@ -395,13 +397,43 @@ export class Game {
   private bind(): void {
     this.canvas.addEventListener("pointermove", this.onMove);
     this.canvas.addEventListener("pointerdown", this.onDown);
+    this.canvas.addEventListener("pointerleave", this.onLeave);
   }
   private unbind(): void {
     this.canvas.removeEventListener("pointermove", this.onMove);
     this.canvas.removeEventListener("pointerdown", this.onDown);
+    this.canvas.removeEventListener("pointerleave", this.onLeave);
   }
-  private onMove = (_e: PointerEvent): void => {
-    // Hover vurgusu şu anlık kullanılmıyor.
+  private onMove = (e: PointerEvent): void => {
+    if (this.won || this.lost) {
+      this.hoverId = null;
+      this.canvas.style.cursor = "default";
+      return;
+    }
+    const r = this.canvas.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * this.canvas.width;
+    const y = ((e.clientY - r.top) / r.height) * this.canvas.height;
+    let hit: number | null = null;
+    let best = -1;
+    for (const t of this.tiles) {
+      if (t.removed || !this.isOpen(t) || !this.sideFree(t)) continue;
+      if (
+        x >= t.sx - this.tw / 2 &&
+        x <= t.sx + this.tw / 2 &&
+        y >= t.sy - this.th / 2 &&
+        y <= t.sy + this.th / 2
+      ) {
+        if (t.layer > best) {
+          best = t.layer;
+          hit = t.id;
+        }
+      }
+    }
+    this.hoverId = hit;
+    this.canvas.style.cursor = hit ? "pointer" : "default";
+  };
+  private onLeave = (): void => {
+    this.hoverId = null;
   };
   private onDown = (e: PointerEvent): void => {
     const r = this.canvas.getBoundingClientRect();
@@ -607,6 +639,8 @@ export class Game {
     this.tiles = [];
     this.selectedId = null;
     this.moves = 0;
+    this.lifts.clear();
+    this.hoverId = null;
     this.seconds = 0;
     this.won = false;
     this.lost = false;
@@ -805,6 +839,18 @@ export class Game {
     this.floats = this.floats.filter((f) => f.life > 0);
     for (const pp of this.pops) pp.life -= dt;
     this.pops = this.pops.filter((pp) => pp.life > 0);
+    // Tas kaldi yayi (hover + secim)
+    for (const t of this.tiles) {
+      if (t.removed) {
+        this.lifts.delete(t.id);
+        continue;
+      }
+      const target = t.id === this.selectedId ? -7 : t.id === this.hoverId ? -3.5 : 0;
+      const cur = this.lifts.get(t.id) ?? 0;
+      if (cur === target) continue;
+      const nx = cur + (target - cur) * Math.min(1, dt * 15);
+      this.lifts.set(t.id, Math.abs(nx - target) < 0.03 ? target : nx);
+    }
     // Ekran parlama sonumu
     if (this.flash > 0) this.flash = Math.max(0, this.flash - dt * 1.8);
     // Ocak kizarlari yukari suruklenir
@@ -1505,6 +1551,9 @@ export class Game {
       if (t.removed) continue;
       const open = this.isOpen(t);
       const sel = t.id === this.selectedId;
+      const canT = open && this.sideFree(t);
+      const lift = this.lifts.get(t.id) ?? 0;
+      const bob = canT ? Math.sin(this.time * 1.6 + t.x * 1.31 + t.y * 0.97) * 0.7 : 0;
       let dk = 1;
       if (this.dealAt >= 0) {
         dk = Math.max(0, Math.min(1, (this.time - this.dealAt - (this.dealDelay.get(t.id) ?? 0)) / 0.22));
@@ -1514,10 +1563,10 @@ export class Game {
         const e = 1 - Math.pow(1 - dk, 3);
         c.save();
         c.globalAlpha = e;
-        this.drawTile(c, { ...t, sy: t.sy - (1 - e) * 46 }, open, sel, open && this.sideFree(t));
+        this.drawTile(c, { ...t, sy: t.sy + bob + lift - (1 - e) * 46 }, open, sel, canT);
         c.restore();
       } else {
-        this.drawTile(c, t, open, sel, open && this.sideFree(t));
+        this.drawTile(c, { ...t, sy: t.sy + bob + lift }, open, sel, canT);
       }
     }
     this.drawHint(c);
@@ -1892,10 +1941,17 @@ export class Game {
     const innerBot = open ? "#d9c08d" : shade(face, -13);
     const rim = open ? "#c3a86c" : "#2f5f48";
 
-    // ---- Dis golge (sag-alt) ----
-    c.fillStyle = "rgba(10,15,20,0.30)";
+    // ---- Dis golge (kalinlik; tas kalkinca yumusar ve uzar) ----
+    const ly = this.lifts.get(t.id) ?? 0;
+    c.fillStyle = "rgba(10,15,20," + (0.3 + ly * 0.02).toFixed(3) + ")";
     c.beginPath();
-    c.roundRect(x + 3, yTop + 5, w, h, R + 1);
+    c.roundRect(x + 3 - ly * 0.4, yTop + 5 - ly * 0.9, w, h, R + 1);
+    c.fill();
+
+    // ---- Yan kalinlik (gercek mahjong tasinda oldugu gibi) ----
+    c.fillStyle = open ? "#c9ad76" : "#142b21";
+    c.beginPath();
+    c.roundRect(x + 1.8, yTop + 4.2, w, h, R);
     c.fill();
 
     // ---- Govde: dikey degrade + bevel ----
@@ -2001,10 +2057,39 @@ export class Game {
       c.roundRect(x + 2, yTop + 2, w - 4, h - 4, R - 1);
       c.fill();
       c.restore();
+      // ---- Parilti suburmesi (lak uberinde kayan isik dalgasi) ----
+      const sw0 = ((this.time * 140) % 2100) - 300;
+      const dd = (t.sx + t.sy * 0.85 - sw0) / 150;
+      const shA = Math.exp(-dd * dd) * 0.13;
+      if (shA > 0.004) {
+        const gl = c.createLinearGradient(x, yTop, x + w * 0.7, yTop + h);
+        gl.addColorStop(0, "rgba(255,250,230,0)");
+        gl.addColorStop(0.5, "rgba(255,250,230," + shA.toFixed(3) + ")");
+        gl.addColorStop(1, "rgba(255,250,230,0)");
+        c.fillStyle = gl;
+        c.beginPath();
+        c.roundRect(x + 1, yTop + 1, w - 2, h - 2, R - 1);
+        c.fill();
+      }
     }
 
-    // ---- Secili vurgusu ----
+    // ---- Hover isik cercevesi ----
+    if (!selected && this.hoverId === t.id) {
+      c.strokeStyle = "rgba(255,225,160,0.4)";
+      c.lineWidth = 2;
+      c.beginPath();
+      c.roundRect(x - 2.5, yTop - 2.5, w + 5, h + 5, R);
+      c.stroke();
+    }
+
+    // ---- Secili vurgusu (nabiz atan hale) ----
     if (selected) {
+      const glA = 0.28 + 0.13 * Math.sin(this.time * 5.2);
+      c.strokeStyle = "rgba(255,176,32," + glA.toFixed(3) + ")";
+      c.lineWidth = 7;
+      c.beginPath();
+      c.roundRect(x - 3, yTop - 3, w + 6, h + 6, R + 2);
+      c.stroke();
       c.strokeStyle = "rgba(255,176,32,0.4)";
       c.lineWidth = 2;
       c.beginPath();
