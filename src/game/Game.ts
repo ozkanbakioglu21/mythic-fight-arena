@@ -367,6 +367,7 @@ export class Game {
   private hoverId: number | null = null;
   private noiseBuf: AudioBuffer | null = null;
   private motto = "";
+  private faceCache = new Map<string, HTMLCanvasElement>();
 
   onHud?: (h: HudState) => void;
 
@@ -1599,24 +1600,57 @@ export class Game {
     // Sinematik vinyet (kenar karartma).
     const vg = c.createRadialGradient(CANVAS_W / 2, CANVAS_H * 0.46, CANVAS_H * 0.28, CANVAS_W / 2, CANVAS_H * 0.5, CANVAS_H * 0.78);
     vg.addColorStop(0, "rgba(0,0,0,0)");
-    vg.addColorStop(1, "rgba(4,8,14,0.42)");
+    vg.addColorStop(1, "rgba(6,4,2,0.46)");
     c.fillStyle = vg;
     c.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // Başlık + seviye (üstte ortalanmış).
-    c.fillStyle = "#d4e8f2";
+    // Baslik: uzaya cekilmis ince bakir plak + basilmis yazi.
+    const plateW = 356;
+    const plateX = CANVAS_W / 2 - plateW / 2;
+    const plateY = 26;
+    const plateH = 52;
+    const pgr = c.createLinearGradient(0, plateY, 0, plateY + plateH);
+    pgr.addColorStop(0, "#8a5a2c");
+    pgr.addColorStop(0.5, "#6e4520");
+    pgr.addColorStop(1, "#54331a");
+    c.fillStyle = pgr;
+    c.beginPath();
+    c.roundRect(plateX, plateY, plateW, plateH, 10);
+    c.fill();
+    c.strokeStyle = "rgba(255,205,140,0.35)";
+    c.lineWidth = 1;
+    c.beginPath();
+    c.roundRect(plateX + 2.5, plateY + 2.5, plateW - 5, plateH - 5, 8);
+    c.stroke();
+    c.strokeStyle = "rgba(20,10,4,0.6)";
+    c.beginPath();
+    c.roundRect(plateX - 1.5, plateY - 1.5, plateW + 3, plateH + 3, 11);
+    c.stroke();
+    c.fillStyle = "rgba(255,210,150,0.5)";
+    c.beginPath();
+    c.arc(plateX + 12, plateY + plateH / 2, 2.6, 0, Math.PI * 2);
+    c.fill();
+    c.beginPath();
+    c.arc(plateX + plateW - 12, plateY + plateH / 2, 2.6, 0, Math.PI * 2);
+    c.fill();
     c.textAlign = "center";
-    c.font = "bold 42px Georgia";
+    c.font = "bold 38px Georgia";
+    c.fillStyle = "rgba(255,220,170,0.25)";
+    c.fillText("Ötüken Mahjong", CANVAS_W / 2, 61.5);
+    c.fillStyle = "#31200e";
     c.fillText("Ötüken Mahjong", CANVAS_W / 2, 60);
+    // Seviye: bakir kazima
     c.font = "bold 22px Georgia";
-    c.fillStyle = "#9fd0e0";
+    c.fillStyle = "rgba(20,10,4,0.5)";
+    c.fillText(`Seviye ${this.levelIndex + 1} · ${def.name}`, CANVAS_W / 2, 93);
+    c.fillStyle = "#c89050";
     c.fillText(`Seviye ${this.levelIndex + 1} · ${def.name}`, CANVAS_W / 2, 92);
     this.drawFates(c);
 
     // Meditasyon motosu — her yeni duvarda degisen felsefi nefes.
     if (this.motto) {
       c.font = "italic 15px Georgia";
-      c.fillStyle = "rgba(180,200,220,0.5)";
+      c.fillStyle = "rgba(200,150,90,0.55)";
       c.fillText(this.motto, CANVAS_W / 2, 122);
     }
 
@@ -1735,6 +1769,14 @@ export class Game {
     }
     c.globalAlpha = 1;
 
+    // Sobaligi: sol-alttan kalkan sicak hale (kadim ocak).
+    const hg = c.createRadialGradient(40, 1210, 30, 40, 1210, 720);
+    hg.addColorStop(0, "rgba(255,150,60,0.13)");
+    hg.addColorStop(0.45, "rgba(255,130,55,0.05)");
+    hg.addColorStop(1, "rgba(255,130,55,0)");
+    c.fillStyle = hg;
+    c.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
     // ---- Hazne (dort taslik yuva) ----
     const trayY = CANVAS_H - 34;
     const trayCx = CANVAS_W / 2;
@@ -1748,9 +1790,11 @@ export class Game {
     c.strokeStyle = "rgba(255,255,255,0.25)";
     c.lineWidth = 1.5;
     c.stroke();
-    c.fillStyle = "#b9d4e0";
+    c.fillStyle = "rgba(20,10,4,0.5)";
     c.font = "bold 14px Georgia";
     c.textAlign = "center";
+    c.fillText("HAZNE", trayCx, trayY - 45);
+    c.fillStyle = "#c89050";
     c.fillText("HAZNE", trayCx, trayY - 46);
     for (let i = 0; i < 4; i++) {
       const sx = trayCx - trayW / 2 + i * (slotW + gapSlot);
@@ -1784,7 +1828,7 @@ export class Game {
     c.fillText(`Kalan: ${remaining}/${total}   Hamle: ${this.moves}   Süre: ${Math.floor(this.seconds)} sn   Karıştır: ${this.maxShuffles - this.shuffleCount}`, CANVAS_W / 2, 144);
 
     // Alttaki kısayollar (haznenin üstü).
-    c.fillStyle = "#7f96b8";
+    c.fillStyle = "rgba(200,145,80,0.65)";
     c.font = "15px Georgia";
     c.fillText("[Yeni Oyun] N   [Geri Al] U   [Sonraki] L", CANVAS_W / 2, CANVAS_H - 60);
     // ---- Kayip ekrani ----
@@ -1887,147 +1931,334 @@ export class Game {
     return this.levelIndex >= 100 ? "mixed" : "none";
   }
 
+/** On-talep tas yuzu (ceviz + inlay); boyuta gore on-bellekli. */
+  private getFaceCanvas(kind: string, open: boolean): HTMLCanvasElement {
+    const w = this.tw;
+    const h = this.th;
+    const key = kind + "|" + (open ? 1 : 0) + "|" + w + "x" + h;
+    const hit = this.faceCache.get(key);
+    if (hit) return hit;
+    const S = 2;
+    const cv = document.createElement("canvas");
+    cv.width = Math.round(w * S);
+    cv.height = Math.round(h * S);
+    const m = cv.getContext("2d")!;
+    m.scale(S, S);
+    this.paintFace(m, kind, open, w, h);
+    this.faceCache.set(key, cv);
+    return cv;
+  }
+
+  /** El oymasi ceviz yuzu: agac dokusu + parlatilmis panel + inlay sembol. */
+  private paintFace(m: CanvasRenderingContext2D, kind: string, open: boolean, w: number, h: number): void {
+    const R = Math.max(4, Math.round(w * 0.125));
+    // Deterministik agac dokusu (tas basina sabit, ama her turde farkli).
+    let seed = kind.charCodeAt(0) * 31 + kind.charCodeAt(kind.length - 1) * 7 + (open ? 3 : 11);
+    const rnd = () => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    };
+    // ---- Ceviz tabani ----
+    const bg = m.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, open ? "#6d482a" : "#332012");
+    bg.addColorStop(0.5, open ? "#5c3b22" : "#2a1a10");
+    bg.addColorStop(1, open ? "#402713" : "#1d1007");
+    m.fillStyle = bg;
+    m.beginPath();
+    m.roundRect(0, 0, w, h, R);
+    m.fill();
+    m.save();
+    m.beginPath();
+    m.roundRect(1, 1, w - 2, h - 2, R - 1);
+    m.clip();
+    for (let i = 0; i < 11; i++) {
+      const y0 = (h / 11) * i + rnd() * 4;
+      m.strokeStyle = rnd() > 0.5 ? "rgba(28,16,6,0.28)" : "rgba(226,178,116,0.07)";
+      m.lineWidth = 0.8 + rnd() * 0.9;
+      m.beginPath();
+      m.moveTo(-2, y0);
+      const step = (w + 4) / 4;
+      for (let x = 0; x < w + 4; x += step) {
+        m.quadraticCurveTo(x + step / 2, y0 + (rnd() - 0.5) * 5, x + step, y0 + (rnd() - 0.5) * 3);
+      }
+      m.stroke();
+    }
+    // Agac gumlusu
+    m.strokeStyle = "rgba(30,18,7,0.20)";
+    m.lineWidth = 1;
+    const kx = w * (0.2 + rnd() * 0.6);
+    const ky = h * (0.15 + rnd() * 0.7);
+    for (let r = 2; r < 7; r += 2.4) {
+      m.beginPath();
+      m.ellipse(kx, ky, r * 1.5, r, 0.3, 0, Math.PI * 2);
+      m.stroke();
+    }
+    m.restore();
+    // ---- Oyulmus yuz paneli (cukur) ----
+    const px = w * 0.09;
+    const py = h * 0.075;
+    const pw = w - px * 2;
+    const ph = h - py * 2;
+    const pR = Math.max(3, R - 2);
+    const pg = m.createLinearGradient(0, py, 0, py + ph);
+    pg.addColorStop(0, open ? "#6b4526" : "#2e1d11");
+    pg.addColorStop(1, open ? "#4a2d16" : "#20130a");
+    m.fillStyle = pg;
+    m.beginPath();
+    m.roundRect(px, py, pw, ph, pR);
+    m.fill();
+    m.strokeStyle = "rgba(18,10,4,0.55)";
+    m.lineWidth = 1.4;
+    m.beginPath();
+    m.roundRect(px, py, pw, ph, pR);
+    m.stroke();
+    m.strokeStyle = "rgba(235,190,130,0.13)";
+    m.lineWidth = 1;
+    m.beginPath();
+    m.roundRect(px + 1.2, py + 1.6, pw - 2.4, ph - 2.4, pR - 1);
+    m.stroke();
+    if (!open) {
+      // Kapali tas arkaligi: hafif kare dokusu + merkezde Gokturk boynuz burme cifti.
+      m.save();
+      m.beginPath();
+      m.roundRect(px, py, pw, ph, pR);
+      m.clip();
+      m.globalAlpha = 0.09;
+      m.strokeStyle = "#d8a86a";
+      m.lineWidth = 1;
+      for (let i = -h; i < w + h; i += 7) {
+        m.beginPath();
+        m.moveTo(i, 0);
+        m.lineTo(i + h, h);
+        m.stroke();
+        m.beginPath();
+        m.moveTo(i, h);
+        m.lineTo(i + h, 0);
+        m.stroke();
+      }
+      m.restore();
+      this.hornSpiral(m, w / 2 - w * 0.09, h / 2, h * 0.11, 1, 0.34);
+      this.hornSpiral(m, w / 2 + w * 0.09, h / 2, h * 0.11, -1, 0.34);
+      return;
+    }
+    // ---- Kazima: cekintinin alt kenari isik + koyu inlay ----
+    const carve = (ch: string, cx: number, cy: number, size: number, color: string) => {
+      m.font = "bold " + Math.round(size) + "px " + CJK_FONT;
+      m.textAlign = "center";
+      m.textBaseline = "middle";
+      m.fillStyle = "rgba(240,200,140,0.22)";
+      m.fillText(ch, cx, cy + 1.1);
+      m.fillStyle = color;
+      m.fillText(ch, cx, cy);
+    };
+    // Turkuaz inlay tas: cekinti + parlatilmis tas + matrix damari + spekular.
+    const stone = (cx: number, cy: number, r: number) => {
+      m.beginPath();
+      m.arc(cx, cy, r + 1.6, 0, Math.PI * 2);
+      m.fillStyle = "rgba(15,8,3,0.6)";
+      m.fill();
+      const g = m.createRadialGradient(cx - r * 0.35, cy - r * 0.4, r * 0.15, cx, cy, r);
+      g.addColorStop(0, "#a8e6d8");
+      g.addColorStop(0.5, "#4fb3a0");
+      g.addColorStop(1, "#1d6357");
+      m.fillStyle = g;
+      m.beginPath();
+      m.arc(cx, cy, r, 0, Math.PI * 2);
+      m.fill();
+      m.strokeStyle = "rgba(20,50,45,0.35)";
+      m.lineWidth = Math.max(0.6, r * 0.12);
+      m.beginPath();
+      m.moveTo(cx - r * 0.55, cy + r * 0.18);
+      m.quadraticCurveTo(cx, cy - r * 0.12, cx + r * 0.55, cy + r * 0.32);
+      m.stroke();
+      m.fillStyle = "rgba(255,255,255,0.75)";
+      m.beginPath();
+      m.ellipse(cx - r * 0.35, cy - r * 0.45, r * 0.22, r * 0.13, -0.6, 0, Math.PI * 2);
+      m.fill();
+    };
+    // Bambu inlayi: cekinti + sicak degrade + gunler + yan parlaklik.
+    const stick = (cx: number, cy: number, sw: number, sh: number, color: string) => {
+      const x = cx - sw / 2;
+      const y = cy - sh / 2;
+      m.beginPath();
+      m.roundRect(x - 1, y - 1, sw + 2, sh + 2, sw * 0.5);
+      m.fillStyle = "rgba(15,8,3,0.5)";
+      m.fill();
+      const g = m.createLinearGradient(x, 0, x + sw, 0);
+      g.addColorStop(0, shade(color, -30));
+      g.addColorStop(0.4, color);
+      g.addColorStop(1, shade(color, -38));
+      m.fillStyle = g;
+      m.beginPath();
+      m.roundRect(x, y, sw, sh, sw * 0.5);
+      m.fill();
+      m.strokeStyle = "rgba(12,30,18,0.5)";
+      m.lineWidth = Math.max(0.7, sw * 0.14);
+      m.beginPath();
+      m.moveTo(x + sw * 0.15, y + sh * 0.32);
+      m.lineTo(x + sw * 0.85, y + sh * 0.32);
+      m.moveTo(x + sw * 0.15, y + sh * 0.68);
+      m.lineTo(x + sw * 0.85, y + sh * 0.68);
+      m.stroke();
+      m.strokeStyle = "rgba(255,240,200,0.35)";
+      m.lineWidth = Math.max(0.5, sw * 0.1);
+      m.beginPath();
+      m.moveTo(x + sw * 0.28, y + sw * 0.5);
+      m.lineTo(x + sw * 0.28, y + sh - sw * 0.5);
+      m.stroke();
+    };
+    // Geometrik Orhon tamgasi (kus / gun / koyun boynuzu).
+    const tamga = (x: number, y: number, s: number, style: number) => {
+      m.strokeStyle = "rgba(232,186,126,0.42)";
+      m.lineWidth = 1;
+      m.beginPath();
+      if (style === 0) {
+        m.moveTo(x, y - s);
+        m.lineTo(x, y + s);
+        m.moveTo(x, y - s * 0.3);
+        m.lineTo(x - s * 0.7, y - s);
+        m.moveTo(x, y - s * 0.3);
+        m.lineTo(x + s * 0.7, y - s);
+      } else if (style === 1) {
+        m.moveTo(x, y - s);
+        m.lineTo(x, y + s);
+        m.moveTo(x - s, y);
+        m.lineTo(x + s, y);
+        m.moveTo(x - s * 0.6, y - s * 0.6);
+        m.lineTo(x + s * 0.6, y + s * 0.6);
+        m.moveTo(x + s * 0.6, y - s * 0.6);
+        m.lineTo(x - s * 0.6, y + s * 0.6);
+      } else {
+        m.moveTo(x - s, y);
+        m.arc(x - s * 0.5, y, s * 0.5, Math.PI, Math.PI * 2.6);
+        m.moveTo(x + s, y);
+        m.arc(x + s * 0.5, y, s * 0.5, Math.PI * 1.4, Math.PI * 0.4, true);
+      }
+      m.stroke();
+    };
+    const fx = w * 0.36;
+    const fy = h * 0.32;
+    if (kind[0] === "c") {
+      // Daire: parlatilmis turkuaz inlay taslari.
+      const n = Number(kind.slice(1));
+      const r = n === 1 ? fy * 0.6 : n === 2 ? fy * 0.36 : n === 3 ? fy * 0.3 : n === 4 ? fy * 0.27 : fy * 0.235;
+      for (const [dx, dy] of DOT_POS[n]) stone(w / 2 + dx * fx, h / 2 + dy * fy, r);
+    } else if (kind[0] === "b") {
+      // Bambu: inlay mizraklar (5'in ortasi kirmizi inlay).
+      const n = Number(kind.slice(1));
+      const sw = n === 1 ? fx * 0.36 : fx * 0.26;
+      const sh = n === 1 ? fy * 1.3 : fy * 0.66;
+      for (const [dx, dy] of DOT_POS[n]) {
+        const isCenter = dx === 0 && dy === 0;
+        stick(w / 2 + dx * fx, h / 2 + dy * fy, sw, sh, n === 5 && isCenter ? "#8a3320" : "#3f7d5a");
+      }
+    } else if (kind[0] === "w") {
+      // Karakter: kazima sayi + koyu kirmizi wan + ince Orhon tamga cercevesi.
+      m.strokeStyle = "rgba(22,12,5,0.5)";
+      m.lineWidth = 1;
+      m.strokeRect(px + 2.5, py + 2.5, pw - 5, ph - 5);
+      m.strokeStyle = "rgba(235,190,130,0.10)";
+      m.strokeRect(px + 3.6, py + 3.6, pw - 7.2, ph - 7.2);
+      tamga(px + 12, py + 11, h * 0.045, 0);
+      tamga(w / 2, py + 11, h * 0.045, 1);
+      tamga(px + pw - 12, py + 11, h * 0.045, 2);
+      carve(NUM_CH[Number(kind.slice(1)) - 1], w / 2, h / 2 - h * 0.115, h * 0.36, "#2e1b0c");
+      carve("萬", w / 2, h / 2 + h * 0.175, h * 0.31, "#7e2f1c");
+    } else if (kind === "E" || kind === "S" || kind === "W" || kind === "N") {
+      m.strokeStyle = "rgba(22,12,5,0.4)";
+      m.lineWidth = 1;
+      m.strokeRect(px + 2.5, py + 2.5, pw - 5, ph - 5);
+      carve(WIND_CH[kind], w / 2, h / 2, h * 0.48, "#2e1b0c");
+    } else if (kind === "DR") {
+      carve("中", w / 2, h / 2, h * 0.52, "#7e2f1c");
+    } else if (kind === "DG") {
+      carve("發", w / 2, h / 2, h * 0.52, "#2f5c44");
+    } else if (kind === "DW") {
+      // Beyaz ejderha: oyulmus cift cerceve + merkez tamga.
+      m.strokeStyle = "rgba(22,12,5,0.6)";
+      m.lineWidth = Math.max(2, w * 0.055);
+      m.strokeRect(px + w * 0.1, py + h * 0.12, pw - w * 0.2, ph - h * 0.24);
+      m.strokeStyle = "rgba(235,190,130,0.22)";
+      m.lineWidth = 1;
+      m.strokeRect(px + w * 0.16, py + h * 0.18, pw - w * 0.32, ph - h * 0.36);
+      tamga(w / 2, h / 2, h * 0.09, 1);
+    } else if (kind[0] === "f") {
+      carve(FLOWER_CH[Number(kind.slice(1)) - 1], w / 2, h / 2 - h * 0.04, h * 0.4, "#7a2a3a");
+      carve(kind.slice(1), w / 2, h / 2 + h * 0.27, h * 0.16, "#6b4a1a");
+      tamga(w / 2 - w * 0.3, h / 2 - h * 0.28, h * 0.04, 2);
+      tamga(w / 2 + w * 0.3, h / 2 - h * 0.28, h * 0.04, 2);
+    } else if (kind[0] === "s") {
+      // Mevsim: harf + Gokturk boynuz burme cifti (sonbahar isi / kis yildizi).
+      const n = Number(kind.slice(1));
+      carve(SEASON_CH[n - 1], w / 2, h / 2 - h * 0.05, h * 0.34, "#6b4a1a");
+      this.hornSpiral(m, w * 0.26, h * 0.3, h * 0.09, 1, 0.4);
+      this.hornSpiral(m, w * 0.74, h * 0.3, h * 0.09, -1, 0.4);
+      if (n === 3) {
+        m.fillStyle = "rgba(150,60,28,0.75)";
+        m.save();
+        m.translate(w / 2, h * 0.72);
+        m.rotate(Math.PI / 4);
+        m.fillRect(-2.5, -2.5, 5, 5);
+        m.restore();
+      } else if (n === 4) {
+        m.strokeStyle = "rgba(216,203,178,0.55)";
+        m.lineWidth = 1;
+        m.beginPath();
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2;
+          m.moveTo(w / 2, h * 0.72);
+          m.lineTo(w / 2 + Math.cos(a) * 6, h * 0.72 + Math.sin(a) * 6);
+        }
+        m.stroke();
+      } else {
+        tamga(w / 2, h * 0.72, h * 0.045, n === 1 ? 0 : 1);
+      }
+      carve(kind.slice(1), w / 2, h / 2 + h * 0.3, h * 0.15, "#5a3d16");
+    }
+  }
+
+  /** Gokturk koyun-boynuzu burmesi (logaritmik, oyulmus). */
+  private hornSpiral(m: CanvasRenderingContext2D, x: number, y: number, r: number, dir: number, alpha: number): void {
+    m.save();
+    m.strokeStyle = "rgba(232,186,126," + alpha.toFixed(2) + ")";
+    m.lineWidth = 1.3;
+    m.lineCap = "round";
+    m.beginPath();
+    const steps = 40;
+    for (let i = 0; i <= steps; i++) {
+      const a = (i / steps) * 2.2 * Math.PI * 2;
+      const rr = r * Math.pow(0.5, a / (Math.PI * 2));
+      const sx = x + dir * Math.cos(a) * rr;
+      const sy = y + Math.sin(a) * rr;
+      if (i === 0) m.moveTo(sx, sy);
+      else m.lineTo(sx, sy);
+    }
+    m.stroke();
+    m.restore();
+  }
+
   private drawFace(c: CanvasRenderingContext2D, t: Tile, open: boolean, canTake: boolean): void {
     const w = this.tw;
     const h = this.th;
     const bx = t.sx;
     const by = t.sy;
-    const kind = t.symbol;
-    c.save();
-    if (!open) c.globalAlpha = 0.5;
-    else if (!canTake) c.globalAlpha = 0.8;
-
-    // Alinabilir taslarda yumusak altin iltihap (tas govdesine kisilmis).
+    const R = Math.max(4, Math.round(w * 0.125));
+    c.drawImage(this.getFaceCanvas(t.symbol, open), bx - w / 2, by - h / 2, w, h);
+    // Alinabilir taslarda yumusak altin nabiz (dinamik, govdeye kisili).
     if (open && canTake) {
       c.save();
       c.beginPath();
-      c.roundRect(bx - w / 2, by - h / 2, w, h, Math.max(4, Math.round(w * 0.125)));
+      c.roundRect(bx - w / 2, by - h / 2, w, h, R);
       c.clip();
-      const pulse = 0.26 + 0.09 * Math.sin(this.time * 2.6 + t.x * 0.9 + t.y * 0.7);
+      const pulse = 0.22 + 0.08 * Math.sin(this.time * 2.6 + t.x * 0.9 + t.y * 0.7);
       const glow = c.createRadialGradient(bx, by, w * 0.1, bx, by, w * 0.58);
-      glow.addColorStop(0, "rgba(255,214,110," + pulse.toFixed(3) + ")");
-      glow.addColorStop(1, "rgba(255,214,110,0)");
+      glow.addColorStop(0, "rgba(255,190,90," + pulse.toFixed(3) + ")");
+      glow.addColorStop(1, "rgba(255,190,90,0)");
       c.fillStyle = glow;
       c.fillRect(bx - w / 2, by - h / 2, w, h);
       c.restore();
     }
-
-    const fx = w * 0.36;
-    const fy = h * 0.32;
-    const text = (ch: string, dy: number, size: number, color: string) => {
-      c.font = "bold " + Math.round(size) + "px " + CJK_FONT;
-      c.textAlign = "center";
-      c.textBaseline = "middle";
-      c.save();
-      c.shadowColor = "rgba(60,40,10,0.28)";
-      c.shadowBlur = 1.2;
-      c.shadowOffsetY = 1;
-      c.fillStyle = color;
-      c.fillText(ch, bx, by + dy);
-      c.restore();
-    };
-
-    if (kind[0] === "c") {
-      // Daire (Tong): antik sikke taslari (kare delikli para)
-      const n = Number(kind.slice(1));
-      const r = n === 1 ? fy * 0.6 : n === 2 ? fy * 0.36 : n === 3 ? fy * 0.3 : n === 4 ? fy * 0.27 : fy * 0.235;
-      for (const [px, py] of DOT_POS[n]) {
-        const color = py < 0 ? "#c0392b" : py > 0 ? "#1b5faa" : "#c0392b";
-        this.drawCoin(c, bx + px * fx, by + py * fy, r, color, n === 1);
-      }
-    } else if (kind[0] === "b") {
-      // Bambu (Tia): yasi baglar (5'in ortasi kirmizidir)
-      const n = Number(kind.slice(1));
-      const sw = n === 1 ? fx * 0.36 : fx * 0.26;
-      const shh = n === 1 ? fy * 1.3 : fy * 0.66;
-      for (const [px, py] of DOT_POS[n]) {
-        const isCenter = px === 0 && py === 0;
-        this.drawStick(c, bx + px * fx, by + py * fy, sw, shh, n === 5 && isCenter ? "#c0392b" : "#2e8b57");
-      }
-    } else if (kind[0] === "w") {
-      // Karakter (Wan): lacivert sayi + kirmizi wan
-      text(NUM_CH[Number(kind.slice(1)) - 1], -h * 0.115, h * 0.36, "#17457c");
-      text("萬", h * 0.175, h * 0.31, "#c0392b");
-    } else if (kind === "E" || kind === "S" || kind === "W" || kind === "N") {
-      text(WIND_CH[kind], 0, h * 0.48, "#1d3a5f");
-    } else if (kind === "DR") {
-      text("中", 0, h * 0.52, "#c0392b");
-    } else if (kind === "DG") {
-      text("發", 0, h * 0.52, "#256d46");
-    } else if (kind === "DW") {
-      // Beyaz ejderha: mavi cerceve
-      c.strokeStyle = "#2c5f9e";
-      c.lineWidth = Math.max(2, w * 0.055);
-      c.beginPath();
-      c.roundRect(bx - w * 0.24, by - h * 0.3, w * 0.48, h * 0.6, w * 0.06);
-      c.stroke();
-      c.strokeStyle = "rgba(44,95,158,0.55)";
-      c.lineWidth = Math.max(1, w * 0.025);
-      c.beginPath();
-      c.roundRect(bx - w * 0.15, by - h * 0.2, w * 0.3, h * 0.4, w * 0.04);
-      c.stroke();
-    } else if (kind[0] === "f") {
-      // Cicekler: kirmizi cicek karakteri + altin numarasi
-      text(FLOWER_CH[Number(kind.slice(1)) - 1], -h * 0.04, h * 0.42, "#c2185b");
-      text(kind.slice(1), h * 0.26, h * 0.17, "#b8860b");
-    } else if (kind[0] === "s") {
-      // Mevsimler: bronz mevsim karakteri + numarasi
-      text(SEASON_CH[Number(kind.slice(1)) - 1], -h * 0.04, h * 0.42, "#b8860b");
-      text(kind.slice(1), h * 0.26, h * 0.17, "#8a6508");
-    }
-    c.restore();
   }
-
-  /** Antik sikke: dolu disk + kare delik (1. dairede ekstra halka). */
-  private drawCoin(c: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string, big: boolean): void {
-    c.beginPath();
-    c.arc(cx, cy, r, 0, Math.PI * 2);
-    c.fillStyle = color;
-    c.fill();
-    c.lineWidth = Math.max(0.8, r * 0.13);
-    c.strokeStyle = "rgba(40,25,10,0.35)";
-    c.stroke();
-    if (big) {
-      c.beginPath();
-      c.arc(cx, cy, r * 0.7, 0, Math.PI * 2);
-      c.lineWidth = Math.max(1, r * 0.12);
-      c.strokeStyle = "#f6ecd4";
-      c.stroke();
-    }
-    const ss = r * (big ? 0.48 : 0.44);
-    c.fillStyle = "#f6ecd4";
-    c.fillRect(cx - ss / 2, cy - ss / 2, ss, ss);
-  }
-
-  /** Yasi bag: yuvarlak govde + gun cizgileri + yan parlaklik. */
-  private drawStick(c: CanvasRenderingContext2D, cx: number, cy: number, sw: number, shh: number, color: string): void {
-    const x = cx - sw / 2;
-    const y = cy - shh / 2;
-    c.beginPath();
-    c.roundRect(x, y, sw, shh, sw * 0.5);
-    c.fillStyle = color;
-    c.fill();
-    c.lineWidth = Math.max(0.8, sw * 0.14);
-    c.strokeStyle = "rgba(40,25,10,0.3)";
-    c.stroke();
-    // gun cizgileri
-    c.strokeStyle = "rgba(15,45,25,0.45)";
-    c.lineWidth = Math.max(0.8, sw * 0.16);
-    c.beginPath();
-    c.moveTo(x + sw * 0.15, y + shh * 0.32);
-    c.lineTo(x + sw * 0.85, y + shh * 0.32);
-    c.moveTo(x + sw * 0.15, y + shh * 0.68);
-    c.lineTo(x + sw * 0.85, y + shh * 0.68);
-    c.stroke();
-    // yan parlaklik
-    c.strokeStyle = "rgba(255,255,255,0.4)";
-    c.lineWidth = Math.max(0.6, sw * 0.12);
-    c.beginPath();
-    c.moveTo(x + sw * 0.3, y + sw * 0.55);
-    c.lineTo(x + sw * 0.3, y + shh - sw * 0.55);
-    c.stroke();
-  }
-
   private drawTile(
     c: CanvasRenderingContext2D,
     t: Tile,
@@ -2041,23 +2272,20 @@ export class Game {
     const yTop = t.sy - h / 2;
     const R = Math.max(4, Math.round(w * 0.125));
 
-    // ---- Renk paleti (acik = fildisi, kapali = koyu duman) ----
-    const face = open ? "#f2e3c0" : "#1f4a37";
-    const faceTop = open ? "#fdf3da" : shade(face, 16);
-    const faceBot = open ? "#e2cb99" : shade(face, -9);
-    const innerTop = open ? "#f8ecd0" : shade(face, 8);
-    const innerBot = open ? "#d9c08d" : shade(face, -13);
-    const rim = open ? "#c3a86c" : "#2f5f48";
+    // ---- Renk paleti (ceviz: acik = yagli, kapali = golegde) ----
+    const faceTop = open ? "#6d482a" : "#332012";
+    const faceBot = open ? "#402713" : "#1d1007";
+    const rim = open ? "#a9713d" : "#3a2a1c";
 
     // ---- Dis golge (kalinlik; tas kalkinca yumusar ve uzar) ----
     const ly = this.lifts.get(t.id) ?? 0;
-    c.fillStyle = "rgba(10,15,20," + (0.3 + ly * 0.02).toFixed(3) + ")";
+    c.fillStyle = "rgba(8,4,1," + (0.34 + ly * 0.02).toFixed(3) + ")";
     c.beginPath();
     c.roundRect(x + 3 - ly * 0.4, yTop + 5 - ly * 0.9, w, h, R + 1);
     c.fill();
 
     // ---- Yan kalinlik (gercek mahjong tasinda oldugu gibi) ----
-    c.fillStyle = open ? "#c9ad76" : "#142b21";
+    c.fillStyle = open ? "#2e1a0d" : "#150d06";
     c.beginPath();
     c.roundRect(x + 1.8, yTop + 4.2, w, h, R);
     c.fill();
@@ -2065,51 +2293,12 @@ export class Game {
     // ---- Govde: dikey degrade + bevel ----
     const bg = c.createLinearGradient(0, yTop, 0, yTop + h);
     bg.addColorStop(0, faceTop);
-    bg.addColorStop(0.45, shade(open ? "#f7ecd2" : face, open ? -3 : 3));
+    bg.addColorStop(0.45, open ? "#5c3b22" : "#2a1a10");
     bg.addColorStop(1, faceBot);
     c.fillStyle = bg;
     c.beginPath();
     c.roundRect(x, yTop, w, h, R);
     c.fill();
-
-    // ---- Ic madalyon (acik) / dokuma yuzey (kapali) ----
-    if (open) {
-      const ig = c.createLinearGradient(0, yTop + 9, 0, yTop + h - 9);
-      ig.addColorStop(0, innerTop);
-      ig.addColorStop(1, innerBot);
-      c.fillStyle = ig;
-      c.beginPath();
-      c.roundRect(x + w * 0.1, yTop + h * 0.09, w - w * 0.2, h - h * 0.18, R - 2);
-      c.fill();
-      // Ic gogei (ustte hafif kucuk)
-      const sh = c.createLinearGradient(0, yTop + h * 0.09, 0, yTop + h * 0.34);
-      sh.addColorStop(0, "rgba(0,0,0,0.06)");
-      sh.addColorStop(1, "rgba(0,0,0,0)");
-      c.fillStyle = sh;
-      c.beginPath();
-      c.roundRect(x + w * 0.1, yTop + h * 0.09, w - w * 0.2, h * 0.25, R - 2);
-      c.fill();
-      // Ust kenar parlaklik cizgisi (madalyon)
-      c.strokeStyle = "rgba(255,255,255,0.55)";
-      c.lineWidth = 1;
-      c.beginPath();
-      c.moveTo(x + w * 0.14, yTop + h * 0.11);
-      c.lineTo(x + w - w * 0.14, yTop + h * 0.11);
-      c.stroke();
-    } else {
-      c.save();
-      c.globalAlpha = 0.16;
-      c.strokeStyle = "#ffffff";
-      c.lineWidth = 1.2;
-      for (let i = -1; i < 5; i++) {
-        const off = x + i * w * 0.17;
-        c.beginPath();
-        c.moveTo(off, yTop);
-        c.lineTo(off + w * 0.16, yTop + h);
-        c.stroke();
-      }
-      c.restore();
-    }
 
     // ---- Sag-alt bevel cizgisi (derinlik) ----
     c.strokeStyle = "rgba(0,0,0,0.22)";
@@ -2120,7 +2309,7 @@ export class Game {
     c.lineTo(x + w - 1, yTop + R);
     c.stroke();
     // Sol-ust parlak cizgi
-    c.strokeStyle = "rgba(255,255,255,0.30)";
+    c.strokeStyle = "rgba(255,215,160,0.25)";
     c.beginPath();
     c.moveTo(x + R, yTop + 1);
     c.lineTo(x + w - 3, yTop + 1);
