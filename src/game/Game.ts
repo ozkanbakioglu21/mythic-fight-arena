@@ -1101,9 +1101,8 @@ export class Game {
         this.tone(660 + this.combo * 80, 0.12, "triangle", 0.08);
         break;
       case "tileclick":
-        // Tok ahşap sesi
-        this.clack(0.16);
-        this.tone(800, 0.04, "square", 0.06);
+        // Mermer tas sesi: tullu, kisa, cam gibi tini
+        this.marblePlace();
         break;
     }
   }
@@ -1263,6 +1262,59 @@ export class Game {
     hp.connect(g);
     g.connect(ac.destination);
     src.start();
+  }
+
+  /** Mermer tas yerlestirme sesi: tullu, kisa "clink". */
+  private marblePlace(): void {
+    const ac = this.audio || this.ensureAudio();
+    if (!ac) return;
+    const t = ac.currentTime;
+
+    // Ana tini: yuksek sine wave
+    const osc = ac.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(2200, t);
+    osc.frequency.exponentialRampToValueAtTime(1400, t + 0.06);
+    const oscG = ac.createGain();
+    oscG.gain.setValueAtTime(0.18, t);
+    oscG.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+    osc.connect(oscG);
+    oscG.connect(ac.destination);
+    osc.start(t);
+    osc.stop(t + 0.1);
+
+    // Ust tini: kisa triangle
+    const osc2 = ac.createOscillator();
+    osc2.type = "triangle";
+    osc2.frequency.setValueAtTime(4400, t);
+    osc2.frequency.exponentialRampToValueAtTime(2800, t + 0.04);
+    const osc2G = ac.createGain();
+    osc2G.gain.setValueAtTime(0.08, t);
+    osc2G.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    osc2.connect(osc2G);
+    osc2G.connect(ac.destination);
+    osc2.start(t);
+    osc2.stop(t + 0.06);
+
+    // Hafif gurultu darbesi: carpma
+    const len = Math.floor(ac.sampleRate * 0.015);
+    const buf = ac.createBuffer(1, len, ac.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) {
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 5);
+    }
+    const src = ac.createBufferSource();
+    src.buffer = buf;
+    const hp = ac.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 3000;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.14, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.02);
+    src.connect(hp);
+    hp.connect(g);
+    g.connect(ac.destination);
+    src.start(t);
   }
 
   /** Sur sesi: karistirma ve dokulusteki karakteristik tas ritmi. */
