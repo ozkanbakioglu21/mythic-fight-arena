@@ -2358,48 +2358,69 @@ export class Game {
     const faceBot = open ? "#402713" : "#1d1007";
     const rim = open ? "#a9713d" : "#3a2a1c";
 
-    // ---- Dis golge (kalinlik; tas kalkinca yumusar ve uzar) ----
+    // ---- Cift katmanli golge: yakin temas + derinlik ----
     const ly = this.lifts.get(t.id) ?? 0;
-    c.fillStyle = "rgba(8,4,1," + (0.34 + ly * 0.02).toFixed(3) + ")";
+    const layerDepth = t.layer * 2.8;
+    // 1) Yakin temas golgesi (keskin, hemen altinda)
+    c.fillStyle = "rgba(0,0,0," + (0.75 + ly * 0.02).toFixed(3) + ")";
     c.beginPath();
-    c.roundRect(x + 3 - ly * 0.4, yTop + 5 - ly * 0.9, w, h, R + 1);
+    c.roundRect(x + 2 - ly * 0.4, yTop + 4 - ly * 0.8, w, h, R + 1);
     c.fill();
+    // 2) Derinlik golgesi (yumusak, katman yuksekligine gore genisler)
+    c.save();
+    c.shadowColor = "rgba(0,0,0,0.5)";
+    c.shadowBlur = 14 + layerDepth;
+    c.shadowOffsetY = 6 + layerDepth * 0.7;
+    c.fillStyle = "rgba(0,0,0,0.01)";
+    c.beginPath();
+    c.roundRect(x, yTop, w, h, R);
+    c.fill();
+    c.restore();
 
-    // ---- Yan kalinlik (gercek mahjong tasinda oldugu gibi) ----
+    // ---- Yan kalinlik (3D extrusion: 6px derinlik) ----
+    const sideH = 6 + layerDepth * 0.4;
     c.fillStyle = open ? "#2e1a0d" : "#150d06";
     c.beginPath();
-    c.roundRect(x + 1.8, yTop + 4.2, w, h, R);
+    c.roundRect(x + 1.5, yTop + sideH, w, h, R);
+    c.fill();
+    // Yan kenar parcasi (sag)
+    c.fillStyle = open ? "#1f1208" : "#0e0804";
+    c.beginPath();
+    c.roundRect(x + w - 2.5, yTop + sideH * 0.6, 3, h * 0.85, 1);
     c.fill();
 
-    // ---- Govde: dikey degrade + bevel ----
-    const bg = c.createLinearGradient(0, yTop, 0, yTop + h);
-    bg.addColorStop(0, faceTop);
-    bg.addColorStop(0.45, open ? "#5c3b22" : "#2a1a10");
+    // ---- Govde: 135 derece egimli degrade (bombeli yuzey hissi) ----
+    const bg = c.createLinearGradient(x, yTop, x + w, yTop + h);
+    bg.addColorStop(0, open ? "#7a5535" : "#3a2215");
+    bg.addColorStop(0.35, faceTop);
+    bg.addColorStop(0.65, open ? "#5c3b22" : "#2a1a10");
     bg.addColorStop(1, faceBot);
     c.fillStyle = bg;
     c.beginPath();
     c.roundRect(x, yTop, w, h, R);
     c.fill();
 
-    // ---- Sag-alt bevel cizgisi (derinlik) ----
-    c.strokeStyle = "rgba(0,0,0,0.22)";
-    c.lineWidth = 1;
+    // ---- 3D Bevel: sol-ust parlak + sag-alt koyu ----
+    // Sag-alt: kalin karanlik bevel
+    c.strokeStyle = "rgba(0,0,0,0.55)";
+    c.lineWidth = 3;
     c.beginPath();
-    c.moveTo(x + R, yTop + h - 1);
-    c.lineTo(x + w - 3, yTop + h - 1);
-    c.lineTo(x + w - 1, yTop + R);
+    c.moveTo(x + R + 1, yTop + h - 1.5);
+    c.lineTo(x + w - 3, yTop + h - 1.5);
+    c.lineTo(x + w - 1.5, yTop + R + 1);
     c.stroke();
-    // Sol-ust parlak cizgi
-    c.strokeStyle = "rgba(255,215,160,0.25)";
+    // Sol-ust: parlak isik cizgisi
+    c.strokeStyle = "rgba(255,255,255,0.22)";
+    c.lineWidth = 1;
     c.beginPath();
     c.moveTo(x + R, yTop + 1);
     c.lineTo(x + w - 3, yTop + 1);
     c.lineTo(x + w - 1, yTop + R);
     c.stroke();
 
-    // ---- Dis cerceve ----
+    // ---- Dis cerceve (3D kalınlık) ----
     c.strokeStyle = selected ? "#ffb020" : rim;
-    c.lineWidth = selected ? 3.5 : 2;
+    c.lineWidth = selected ? 3.5 : 2.5;
     c.beginPath();
     c.roundRect(x, yTop, w, h, R);
     c.stroke();
@@ -2458,6 +2479,18 @@ export class Game {
       c.beginPath();
       c.roundRect(x - 2.5, yTop - 2.5, w + 5, h + 5, R);
       c.stroke();
+    }
+    // Secili tas altina ek isik sızması
+    if (selected) {
+      c.save();
+      c.shadowColor = "rgba(255,180,40,0.45)";
+      c.shadowBlur = 12 + layerDepth;
+      c.shadowOffsetY = 4;
+      c.fillStyle = "rgba(255,180,40,0.03)";
+      c.beginPath();
+      c.roundRect(x, yTop, w, h, R);
+      c.fill();
+      c.restore();
     }
 
     // ---- Secili vurgusu (nabiz atan hale) ----
