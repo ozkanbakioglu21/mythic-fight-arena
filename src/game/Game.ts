@@ -66,6 +66,18 @@ const FLOWER_CH = ["梅", "蘭", "菊", "竹"];
 const SEASON_CH = ["春", "夏", "秋", "冬"];
 const CJK_FONT = "'Segoe UI','Microsoft YaHei','Noto Sans CJK SC','Noto Sans SC',serif";
 
+// Meditasyon motto'lari — her yeni duvar, rastgele bir felsefi nefes.
+const MOTTOS = [
+  "Her duvar, çözülmek için dizilir.",
+  "Taşa değil, akışa bağlan.",
+  "Bırakmak, tutmaktan güçlüdür.",
+  "Dağınık parçadan eksiksiz bütün.",
+  "Doğru anı bekle, aceleyi bırak.",
+  "Denge, en derin stratejidir.",
+  "Sessizlikte oku, akışta bırak.",
+  "Her hamle bir penceredir.",
+];
+
 function tileColor(kind: string): string {
   if (kind[0] === "b") return "#2e8b57";
   if (kind[0] === "c") return "#1b5faa";
@@ -353,6 +365,8 @@ export class Game {
   private embers: Array<{ x: number; y: number; vy: number; ph: number; r: number }> = [];
   private lifts: Map<number, number> = new Map();
   private hoverId: number | null = null;
+  private noiseBuf: AudioBuffer | null = null;
+  private motto = "";
 
   onHud?: (h: HudState) => void;
 
@@ -551,6 +565,7 @@ export class Game {
     this.dealDelay = new Map<number, number>();
     this.tiles.forEach((t, i) => this.dealDelay.set(t.id, i * 0.012));
     this.dealAt = this.time;
+    this.dealRattle();
   }
 
   /** Kaldirma sirasini simule eder: her adimda acik bir cift secip havada
@@ -657,6 +672,7 @@ export class Game {
     this.flash = 0;
     this.wonAt = 0;
     this.fates = this.rollFates();
+    this.motto = MOTTOS[Math.floor(Math.random() * MOTTOS.length)];
     this.buildLayout();
     this.emitHud();
   }
@@ -1040,6 +1056,88 @@ export class Game {
         );
         break;
     }
+  }
+
+  /** Mahjong tasindan gelen kisir "tak" sesi (filtrelenmis gürültü darbesi). */
+  private clack(vol = 0.12): void {
+    const ac = this.audio || this.ensureAudio();
+    if (!ac) return;
+    if (!this.noiseBuf) {
+      const len = Math.floor(ac.sampleRate * 0.06);
+      const buf = ac.createBuffer(1, len, ac.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
+      this.noiseBuf = buf;
+    }
+    const src = ac.createBufferSource();
+    src.buffer = this.noiseBuf;
+    const bp = ac.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = 2200 + Math.random() * 1400;
+    bp.Q.value = 1.1;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(vol, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.06);
+    src.connect(bp);
+    bp.connect(g);
+    g.connect(ac.destination);
+    src.start();
+  }
+
+  /** Sur sesi: karistirma ve dokulusteki karakteristik tas ritmi. */
+  private dealRattle(): void {
+    for (let i = 0; i < 16; i++) {
+      setTimeout(() => this.clack(0.05 + Math.random() * 0.09), i * 85 + Math.random() * 30);
+    }
+  }
+
+  /** Uyum madalyonu: merkezde yavas donen yin-yang, etrafinda surun
+   *  cozulme orani (dağınık parçalardan eksiksiz bütlüne). */
+  private drawYinYangMedallion(c: CanvasRenderingContext2D): void {
+    const total = this.tiles.length;
+    const remaining = this.tiles.filter((t) => !t.removed).length;
+    const prog = total > 0 ? 1 - remaining / total : 0;
+    const cx = CANVAS_W - 52;
+    const cy = 64;
+    const r = 26;
+    c.save();
+    c.strokeStyle = "rgba(255,255,255,0.10)";
+    c.lineWidth = 4;
+    c.lineCap = "round";
+    c.beginPath();
+    c.arc(cx, cy, r + 6, 0, Math.PI * 2);
+    c.stroke();
+    if (prog > 0.001) {
+      c.strokeStyle = "rgba(255,215,94,0.9)";
+      c.lineWidth = 4;
+      c.beginPath();
+      c.arc(cx, cy, r + 6, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2);
+      c.stroke();
+    }
+    this.drawYinYang(c, cx, cy, r, this.time * 0.6);
+    c.restore();
+  }
+
+  /** Yin-yang sembolu (gecicilik, denge). */
+  private drawYinYang(c: CanvasRenderingContext2D, cx: number, cy: number, r: number, rot: number): void {
+    c.save();
+    c.translate(cx, cy);
+    c.rotate(rot);
+    const light = "#f3ead2";
+    const dark = "#1c2430";
+    c.fillStyle = light;
+    c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill();
+    c.fillStyle = dark;
+    c.beginPath(); c.arc(0, 0, r, -Math.PI / 2, Math.PI / 2, false); c.closePath(); c.fill();
+    c.fillStyle = dark;
+    c.beginPath(); c.arc(0, r / 2, r / 2, 0, Math.PI * 2); c.fill();
+    c.fillStyle = light;
+    c.beginPath(); c.arc(0, -r / 2, r / 2, 0, Math.PI * 2); c.fill();
+    c.fillStyle = dark;
+    c.beginPath(); c.arc(0, -r / 2, r / 6, 0, Math.PI * 2); c.fill();
+    c.fillStyle = light;
+    c.beginPath(); c.arc(0, r / 2, r / 6, 0, Math.PI * 2); c.fill();
+    c.restore();
   }
 
   private rollFates(): string[] {
@@ -1514,6 +1612,16 @@ export class Game {
     c.fillStyle = "#9fd0e0";
     c.fillText(`Seviye ${this.levelIndex + 1} · ${def.name}`, CANVAS_W / 2, 92);
     this.drawFates(c);
+
+    // Meditasyon motosu — her yeni duvarda degisen felsefi nefes.
+    if (this.motto) {
+      c.font = "italic 15px Georgia";
+      c.fillStyle = "rgba(180,200,220,0.5)";
+      c.fillText(this.motto, CANVAS_W / 2, 122);
+    }
+
+    // Uyum madalyonu: yin-yang + surun cozulme yayi (tamamlanma arayisi).
+    this.drawYinYangMedallion(c);
 
     // Yerleşimin çerçevesi (taş alanına göre).
     const boxW = this.layoutCols * (this.tw + this.gap) + this.gap;
