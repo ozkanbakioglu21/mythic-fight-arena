@@ -355,7 +355,6 @@ export class Game {
   private maxShuffles = 3;
   private hintIds: number[] = [];
   private audio: AudioContext | null = null;
-  private sound = new SoundEngine();
   private tw = 72;
   private th = 100;
   private gap = 10;
@@ -376,9 +375,9 @@ export class Game {
   onHud?: (h: HudState) => void;
 
   /** Ses motoruna erişim (mute butonu icin). */
-  getSound(): SoundEngine { return this.sound; }
-  toggleMute(): boolean { return this.sound.toggleMute(); }
-  isMuted(): boolean { return this.sound.muted; }
+  getSound() { return SoundEngine; }
+  toggleMute(): boolean { return SoundEngine.toggleMute(); }
+  isMuted(): boolean { return SoundEngine.isMuted(); }
 
   constructor(private canvas: HTMLCanvasElement) {
     canvas.width = CANVAS_W;
@@ -1068,7 +1067,7 @@ export class Game {
   }
 
   private sfx(name: string): void {
-    this.sound.play(name, this.combo);
+    SoundEngine.play(name, this.combo);
   }
 
   /** Mahjong tasindan gelen kisir "tak" sesi (filtrelenmis gürültü darbesi). */
