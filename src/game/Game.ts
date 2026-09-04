@@ -807,7 +807,7 @@ export class Game {
       this.lost = true;
       this.sfx("lose");
     } else {
-      this.sfx("pick");
+      this.sfx("tileclick");
     }
 
     // Kazanma.
@@ -936,6 +936,22 @@ export class Game {
           const spd = 90 + Math.random() * 260;
           this.bursts.push({ x: bt.sx, y: bt.sy, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd - 60, life: 0.7, max: 1, color: tileColor(bt.symbol), r: 3 + Math.random() * 6 });
         }
+        // Altin/turkuaz isik parcaciklari (yukari suzulen, 400ms)
+        const pColors = ["#ffd75e", "#ffe9a8", "#4fb3a0", "#a8e6d8", "#ffd75e"];
+        for (let k = 0; k < 10; k++) {
+          const ang = -Math.PI / 2 + (Math.random() - 0.5) * 1.2;
+          const spd = 120 + Math.random() * 200;
+          this.bursts.push({
+            x: bt.sx + (Math.random() - 0.5) * 20,
+            y: bt.sy - 10,
+            vx: Math.cos(ang) * spd * 0.5,
+            vy: Math.sin(ang) * spd,
+            life: 0.4,
+            max: 0.4,
+            color: pColors[k % pColors.length],
+            r: 2 + Math.random() * 3,
+          });
+        }
         this.bursts.push({ x: bt.sx, y: bt.sy, vx: 0, vy: -40, life: 0.35, max: 0.35, color: "#ffffff", r: 26 });
       }
       this.floats.push({ x: (btA!.sx + btB!.sx) / 2, y: (btA!.sy + btB!.sy) / 2 - 10, life: 1.0, max: 1.0, text: "+2", color: "#ffd75e" });
@@ -964,9 +980,10 @@ export class Game {
     this.tray.splice(b, 1);
     this.tray.splice(a, 1);
     this.combo++;
+    if (this.combo >= 2) this.sfx("combo");
     if (this.combo >= 3) this.flash = Math.min(0.6, 0.25 + this.combo * 0.05);
     this.comboTimer = this.comboDuration();
-    this.score += Math.round(100 * Math.min(this.combo, 10) * this.scoreMult());
+    this.score += Math.round(100 * (1 + (this.combo - 1) * 0.15) * this.combo * this.scoreMult());
   }
 
   shuffle(): void {
@@ -1083,6 +1100,16 @@ export class Game {
           setTimeout(() => this.tone(f, 0.28, "triangle", 0.18), i * 110),
         );
         break;
+      case "combo":
+        // Yukselen tonlu kombo efekti
+        this.tone(440 + this.combo * 60, 0.15, "sine", 0.14, 660 + this.combo * 80);
+        this.tone(660 + this.combo * 80, 0.12, "triangle", 0.08);
+        break;
+      case "tileclick":
+        // Tok ahşap sesi
+        this.clack(0.16);
+        this.tone(800, 0.04, "square", 0.06);
+        break;
     }
   }
 
@@ -1186,7 +1213,7 @@ export class Game {
   }
 
   private comboDuration(): number {
-    let d = 5;
+    let d = 3;
     if (this.fates.includes("alp")) d += 2;
     if (this.fates.includes("shadow")) d -= 2;
     return Math.max(2, d);
@@ -1909,6 +1936,24 @@ export class Game {
     let topLine = `Puan: ${this.score}`;
     if (this.combo > 1 && this.comboTimer > 0) topLine += `   Combo ×${this.combo}`;
     c.fillText(topLine, CANVAS_W / 2, 116);
+    // Kombo gosterigi (sag ust)
+    if (this.combo > 1 && this.comboTimer > 0) {
+      const cAlpha = Math.min(1, this.comboTimer / 0.8);
+      const cPulse = 0.7 + 0.3 * Math.sin(this.time * 6);
+      c.save();
+      c.globalAlpha = cAlpha;
+      c.textAlign = "right";
+      c.font = "bold 28px Georgia";
+      // Aleve/yansi efekti
+      c.shadowColor = "rgba(255,150,40,0.7)";
+      c.shadowBlur = 14;
+      c.fillStyle = "rgba(255,180,40," + cPulse.toFixed(2) + ")";
+      c.fillText(`×${this.combo} Kombo`, CANVAS_W - 24, 116);
+      c.shadowBlur = 0;
+      c.fillStyle = "#ffd75e";
+      c.fillText(`×${this.combo} Kombo`, CANVAS_W - 24, 116);
+      c.restore();
+    }
     c.fillStyle = "#d4e8f2";
     c.fillText(`Kalan: ${remaining}/${total}   Hamle: ${this.moves}   Süre: ${Math.floor(this.seconds)} sn   Karıştır: ${this.maxShuffles - this.shuffleCount}`, CANVAS_W / 2, 144);
 

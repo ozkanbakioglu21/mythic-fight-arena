@@ -130,6 +130,37 @@ body,
   background: #274c5f;
 }
 
+/* ---- Tematik guc butonlari ---- */
+.power-btn {
+  background: linear-gradient(135deg, #2a1a0e, #1c3a4c);
+  border: 1px solid rgba(212,175,55,0.3);
+  color: #d4e8f2;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+}
+.power-btn:hover {
+  background: linear-gradient(135deg, #3a2510, #274c5f);
+  box-shadow: 0 0 12px rgba(212,175,55,0.4);
+  transform: translateY(-1px);
+}
+.power-btn:active {
+  transform: scale(0.95);
+  box-shadow: 0 0 16px rgba(212,175,55,0.6);
+  filter: brightness(1.15);
+}
+.power-btn:disabled {
+  opacity: 0.4;
+  box-shadow: none;
+}
+.power-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(212,175,55,0.08), transparent 60%);
+  pointer-events: none;
+}
+
 /* ---- Mobil / dokunmatik ----
    Tuvali ekrana yaklaştır, butonları kompaktlaştır. */
 @media (max-width: 560px) {

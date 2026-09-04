@@ -84,14 +84,14 @@ export default function App() {
         <button className="btn tbtn" onClick={() => gameRef.current?.newGame()}>
           Yeni Oyun (N)
         </button>
-        <button className="btn tbtn" onClick={() => gameRef.current?.undo()}>
-          Geri Al (U)
+        <button className="btn tbtn power-btn" onClick={() => gameRef.current?.undo()}>
+          Zamanı Çevir (U)
         </button>
-        <button className="btn tbtn" onClick={() => gameRef.current?.hint()}>
-          İpucu (H)
+        <button className="btn tbtn power-btn" onClick={() => gameRef.current?.hint()}>
+          Gök Görüşü (H)
         </button>
-        <button className="btn tbtn" disabled={!hud || hud.shuffles <= 0} onClick={() => gameRef.current?.shuffle()}>
-          Karıştır ({hud?.shuffles ?? 0})
+        <button className="btn tbtn power-btn" disabled={!hud || hud.shuffles <= 0} onClick={() => gameRef.current?.shuffle()}>
+          Bozkurt Rüzgarı ({hud?.shuffles ?? 0})
         </button>
         <button className="btn tbtn" onClick={() => gameRef.current?.nextLevel()}>
           Sonraki (L)
