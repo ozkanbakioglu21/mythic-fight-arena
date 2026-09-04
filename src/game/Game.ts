@@ -1134,106 +1134,135 @@ export class Game {
     src.start();
   }
 
-  /** Gelismis kirilma sesi: cok katmanli agac kirilmasi. */
+  /** Mermer tas kirilma sesi: sert, cam gibi catirdayan, yuksek frekansli. */
   private breakSound(): void {
     const ac = this.audio || this.ensureAudio();
     if (!ac) return;
     const t = ac.currentTime;
 
-    // 1) Sert caturtma: yuksek frekansli gurultu darbesi
-    const impactLen = Math.floor(ac.sampleRate * 0.04);
+    // 1) Sert mermer carpma: cok yuksek frekansli gurultu darbesi
+    const impactLen = Math.floor(ac.sampleRate * 0.025);
     const impactBuf = ac.createBuffer(1, impactLen, ac.sampleRate);
     const impactD = impactBuf.getChannelData(0);
     for (let i = 0; i < impactLen; i++) {
-      impactD[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / impactLen, 4);
+      impactD[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / impactLen, 5);
     }
     const impactSrc = ac.createBufferSource();
     impactSrc.buffer = impactBuf;
     const impactHp = ac.createBiquadFilter();
     impactHp.type = "highpass";
-    impactHp.frequency.value = 1800;
+    impactHp.frequency.value = 3200;
     const impactG = ac.createGain();
-    impactG.gain.setValueAtTime(0.35, t);
-    impactG.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    impactG.gain.setValueAtTime(0.4, t);
+    impactG.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
     impactSrc.connect(impactHp);
     impactHp.connect(impactG);
     impactG.connect(ac.destination);
     impactSrc.start(t);
 
-    // 2)altin catlak: kisa square wave cizi
-    const osc1 = ac.createOscillator();
-    osc1.type = "square";
-    osc1.frequency.setValueAtTime(520, t);
-    osc1.frequency.exponentialRampToValueAtTime(90, t + 0.07);
-    const osc1G = ac.createGain();
-    osc1G.gain.setValueAtTime(0.18, t);
-    osc1G.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
-    osc1.connect(osc1G);
-    osc1G.connect(ac.destination);
-    osc1.start(t);
-    osc1.stop(t + 0.1);
+    // 2) Cam catirtisi: kisa, sert, yuksek square darbeleri (3 adet)
+    for (let i = 0; i < 3; i++) {
+      const delay = i * 0.018;
+      const osc = ac.createOscillator();
+      osc.type = "square";
+      osc.frequency.setValueAtTime(2400 - i * 400, t + delay);
+      osc.frequency.exponentialRampToValueAtTime(800, t + delay + 0.025);
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.14 - i * 0.03, t + delay);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + delay + 0.03);
+      osc.connect(g);
+      g.connect(ac.destination);
+      osc.start(t + delay);
+      osc.stop(t + delay + 0.04);
+    }
 
-    // 3) Govde kirilmasi: alcalan sawtooth + gurultu katmani
-    const bodyLen = Math.floor(ac.sampleRate * 0.15);
+    // 3) Mermer govdesi: yuksek bandpass gurultu + alcalan ton
+    const bodyLen = Math.floor(ac.sampleRate * 0.1);
     const bodyBuf = ac.createBuffer(1, bodyLen, ac.sampleRate);
     const bodyD = bodyBuf.getChannelData(0);
     for (let i = 0; i < bodyLen; i++) {
-      bodyD[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bodyLen, 1.8);
+      bodyD[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bodyLen, 2.5);
     }
     const bodySrc = ac.createBufferSource();
     bodySrc.buffer = bodyBuf;
     const bodyBp = ac.createBiquadFilter();
     bodyBp.type = "bandpass";
-    bodyBp.frequency.setValueAtTime(1200, t + 0.02);
-    bodyBp.frequency.exponentialRampToValueAtTime(200, t + 0.15);
-    bodyBp.Q.value = 0.8;
+    bodyBp.frequency.setValueAtTime(2800, t + 0.01);
+    bodyBp.frequency.exponentialRampToValueAtTime(900, t + 0.1);
+    bodyBp.Q.value = 1.2;
     const bodyG = ac.createGain();
-    bodyG.gain.setValueAtTime(0.22, t + 0.02);
-    bodyG.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    bodyG.gain.setValueAtTime(0.2, t + 0.01);
+    bodyG.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
     bodySrc.connect(bodyBp);
     bodyBp.connect(bodyG);
     bodyG.connect(ac.destination);
-    bodySrc.start(t + 0.02);
+    bodySrc.start(t + 0.01);
 
     const osc2 = ac.createOscillator();
-    osc2.type = "sawtooth";
-    osc2.frequency.setValueAtTime(200, t + 0.02);
-    osc2.frequency.exponentialRampToValueAtTime(50, t + 0.18);
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(1600, t + 0.01);
+    osc2.frequency.exponentialRampToValueAtTime(400, t + 0.12);
     const osc2G = ac.createGain();
-    osc2G.gain.setValueAtTime(0.12, t + 0.02);
-    osc2G.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+    osc2G.gain.setValueAtTime(0.1, t + 0.01);
+    osc2G.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
     osc2.connect(osc2G);
     osc2G.connect(ac.destination);
-    osc2.start(t + 0.02);
-    osc2.stop(t + 0.22);
+    osc2.start(t + 0.01);
+    osc2.stop(t + 0.15);
 
-    // 4) Rezonans kuyrugU: uzun sureli filtrelenmis gurultu
-    const resLen = Math.floor(ac.sampleRate * 0.25);
+    // 4) Mermer rezonansi: uzun, yuksek, cam gibi tini
+    const resLen = Math.floor(ac.sampleRate * 0.35);
     const resBuf = ac.createBuffer(1, resLen, ac.sampleRate);
     const resD = resBuf.getChannelData(0);
     for (let i = 0; i < resLen; i++) {
-      resD[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / resLen, 3);
+      resD[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / resLen, 2);
     }
     const resSrc = ac.createBufferSource();
     resSrc.buffer = resBuf;
     const resBp = ac.createBiquadFilter();
     resBp.type = "bandpass";
-    resBp.frequency.value = 600;
-    resBp.Q.value = 2;
+    resBp.frequency.value = 1800;
+    resBp.Q.value = 3.5;
     const resG = ac.createGain();
-    resG.gain.setValueAtTime(0.08, t + 0.04);
-    resG.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+    resG.gain.setValueAtTime(0.06, t + 0.03);
+    resG.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
     resSrc.connect(resBp);
     resBp.connect(resG);
     resG.connect(ac.destination);
-    resSrc.start(t + 0.04);
+    resSrc.start(t + 0.03);
 
-    // 5) Parca sacilmasi: 4 adet kisa clack, ritmik
-    const delays = [0.06, 0.11, 0.17, 0.24];
-    const vols = [0.18, 0.12, 0.08, 0.05];
+    // 5) Parca sacilmasi: 5 adet yuksek clack, ritmik
+    const delays = [0.04, 0.08, 0.13, 0.19, 0.26];
+    const vols = [0.2, 0.14, 0.1, 0.07, 0.04];
     for (let i = 0; i < delays.length; i++) {
-      setTimeout(() => this.clack(vols[i]), delays[i] * 1000);
+      setTimeout(() => this.marbleClack(vols[i]), delays[i] * 1000);
     }
+  }
+
+  /** Mermer tas sesi: yuksek frekansli, cam gibi catirti. */
+  private marbleClack(vol = 0.1): void {
+    const ac = this.audio || this.ensureAudio();
+    if (!ac) return;
+    const t = ac.currentTime;
+    const len = Math.floor(ac.sampleRate * 0.035);
+    const buf = ac.createBuffer(1, len, ac.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) {
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+    }
+    const src = ac.createBufferSource();
+    src.buffer = buf;
+    const hp = ac.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 2800 + Math.random() * 1200;
+    hp.Q.value = 0.7;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+    src.connect(hp);
+    hp.connect(g);
+    g.connect(ac.destination);
+    src.start();
   }
 
   /** Sur sesi: karistirma ve dokulusteki karakteristik tas ritmi. */
