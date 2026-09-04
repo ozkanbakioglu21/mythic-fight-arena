@@ -2,6 +2,8 @@
 // Kurallar: standart 144 taslik mahjong setinden ayni desene sahip iki AÇIK taşı seçip eşleştir, kaldır.
 // Tüm taşlar kalkınca oyunu kazanırsın.
 
+import { SoundEngine } from "./sound";
+
 const CANVAS_W = 720;
 const CANVAS_H = 1280;
 
@@ -353,6 +355,7 @@ export class Game {
   private maxShuffles = 3;
   private hintIds: number[] = [];
   private audio: AudioContext | null = null;
+  private sound = new SoundEngine();
   private tw = 72;
   private th = 100;
   private gap = 10;
@@ -371,6 +374,11 @@ export class Game {
   private matchFx: { x1: number; y1: number; x2: number; y2: number; timer: number; max: number } | null = null;
 
   onHud?: (h: HudState) => void;
+
+  /** Ses motoruna erişim (mute butonu icin). */
+  getSound(): SoundEngine { return this.sound; }
+  toggleMute(): boolean { return this.sound.toggleMute(); }
+  isMuted(): boolean { return this.sound.muted; }
 
   constructor(private canvas: HTMLCanvasElement) {
     canvas.width = CANVAS_W;
@@ -1059,52 +1067,8 @@ export class Game {
     return this.audio;
   }
 
-  private tone(freq: number, dur: number, type: OscillatorType, vol = 0.2, slideTo?: number): void {
-    const ac = this.audio || this.ensureAudio();
-    if (!ac) return;
-    const osc = ac.createOscillator();
-    const g = ac.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, ac.currentTime);
-    if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, ac.currentTime + dur);
-    g.gain.setValueAtTime(0.0001, ac.currentTime);
-    g.gain.exponentialRampToValueAtTime(vol, ac.currentTime + 0.012);
-    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + dur);
-    osc.connect(g);
-    g.connect(ac.destination);
-    osc.start();
-    osc.stop(ac.currentTime + dur + 0.03);
-  }
-
   private sfx(name: string): void {
-    this.audio || this.ensureAudio();
-    switch (name) {
-      case "pick": this.tone(540, 0.08, "triangle", 0.12); break;
-      case "undo": this.tone(320, 0.14, "triangle", 0.12, 200); break;
-      case "hint": this.tone(880, 0.12, "sine", 0.14, 1240); break;
-      case "shuffle":
-        this.tone(180, 0.16, "sawtooth", 0.1, 120);
-        setTimeout(() => this.tone(230, 0.12, "sawtooth", 0.08), 120);
-        break;
-      case "lose": this.tone(320, 0.5, "sawtooth", 0.12, 130); break;
-      case "match":
-        this.breakSound();
-        break;
-      case "win":
-        [523, 659, 784, 1046].forEach((f, i) =>
-          setTimeout(() => this.tone(f, 0.28, "triangle", 0.18), i * 110),
-        );
-        break;
-      case "combo":
-        // Yukselen tonlu kombo efekti
-        this.tone(440 + this.combo * 60, 0.15, "sine", 0.14, 660 + this.combo * 80);
-        this.tone(660 + this.combo * 80, 0.12, "triangle", 0.08);
-        break;
-      case "tileclick":
-        // Mermer tas sesi: tullu, kisa, cam gibi tini
-        this.marblePlace();
-        break;
-    }
+    this.sound.play(name, this.combo);
   }
 
   /** Mahjong tasindan gelen kisir "tak" sesi (filtrelenmis gürültü darbesi). */
@@ -1131,190 +1095,6 @@ export class Game {
     bp.connect(g);
     g.connect(ac.destination);
     src.start();
-  }
-
-  /** Mermer tas kirilma sesi: sert, cam gibi catirdayan, yuksek frekansli. */
-  private breakSound(): void {
-    const ac = this.audio || this.ensureAudio();
-    if (!ac) return;
-    const t = ac.currentTime;
-
-    // 1) Sert mermer carpma: cok yuksek frekansli gurultu darbesi
-    const impactLen = Math.floor(ac.sampleRate * 0.025);
-    const impactBuf = ac.createBuffer(1, impactLen, ac.sampleRate);
-    const impactD = impactBuf.getChannelData(0);
-    for (let i = 0; i < impactLen; i++) {
-      impactD[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / impactLen, 5);
-    }
-    const impactSrc = ac.createBufferSource();
-    impactSrc.buffer = impactBuf;
-    const impactHp = ac.createBiquadFilter();
-    impactHp.type = "highpass";
-    impactHp.frequency.value = 3200;
-    const impactG = ac.createGain();
-    impactG.gain.setValueAtTime(0.4, t);
-    impactG.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
-    impactSrc.connect(impactHp);
-    impactHp.connect(impactG);
-    impactG.connect(ac.destination);
-    impactSrc.start(t);
-
-    // 2) Cam catirtisi: kisa, sert, yuksek square darbeleri (3 adet)
-    for (let i = 0; i < 3; i++) {
-      const delay = i * 0.018;
-      const osc = ac.createOscillator();
-      osc.type = "square";
-      osc.frequency.setValueAtTime(2400 - i * 400, t + delay);
-      osc.frequency.exponentialRampToValueAtTime(800, t + delay + 0.025);
-      const g = ac.createGain();
-      g.gain.setValueAtTime(0.14 - i * 0.03, t + delay);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + delay + 0.03);
-      osc.connect(g);
-      g.connect(ac.destination);
-      osc.start(t + delay);
-      osc.stop(t + delay + 0.04);
-    }
-
-    // 3) Mermer govdesi: yuksek bandpass gurultu + alcalan ton
-    const bodyLen = Math.floor(ac.sampleRate * 0.1);
-    const bodyBuf = ac.createBuffer(1, bodyLen, ac.sampleRate);
-    const bodyD = bodyBuf.getChannelData(0);
-    for (let i = 0; i < bodyLen; i++) {
-      bodyD[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bodyLen, 2.5);
-    }
-    const bodySrc = ac.createBufferSource();
-    bodySrc.buffer = bodyBuf;
-    const bodyBp = ac.createBiquadFilter();
-    bodyBp.type = "bandpass";
-    bodyBp.frequency.setValueAtTime(2800, t + 0.01);
-    bodyBp.frequency.exponentialRampToValueAtTime(900, t + 0.1);
-    bodyBp.Q.value = 1.2;
-    const bodyG = ac.createGain();
-    bodyG.gain.setValueAtTime(0.2, t + 0.01);
-    bodyG.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-    bodySrc.connect(bodyBp);
-    bodyBp.connect(bodyG);
-    bodyG.connect(ac.destination);
-    bodySrc.start(t + 0.01);
-
-    const osc2 = ac.createOscillator();
-    osc2.type = "sine";
-    osc2.frequency.setValueAtTime(1600, t + 0.01);
-    osc2.frequency.exponentialRampToValueAtTime(400, t + 0.12);
-    const osc2G = ac.createGain();
-    osc2G.gain.setValueAtTime(0.1, t + 0.01);
-    osc2G.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
-    osc2.connect(osc2G);
-    osc2G.connect(ac.destination);
-    osc2.start(t + 0.01);
-    osc2.stop(t + 0.15);
-
-    // 4) Mermer rezonansi: uzun, yuksek, cam gibi tini
-    const resLen = Math.floor(ac.sampleRate * 0.35);
-    const resBuf = ac.createBuffer(1, resLen, ac.sampleRate);
-    const resD = resBuf.getChannelData(0);
-    for (let i = 0; i < resLen; i++) {
-      resD[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / resLen, 2);
-    }
-    const resSrc = ac.createBufferSource();
-    resSrc.buffer = resBuf;
-    const resBp = ac.createBiquadFilter();
-    resBp.type = "bandpass";
-    resBp.frequency.value = 1800;
-    resBp.Q.value = 3.5;
-    const resG = ac.createGain();
-    resG.gain.setValueAtTime(0.06, t + 0.03);
-    resG.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
-    resSrc.connect(resBp);
-    resBp.connect(resG);
-    resG.connect(ac.destination);
-    resSrc.start(t + 0.03);
-
-    // 5) Parca sacilmasi: 5 adet yuksek clack, ritmik
-    const delays = [0.04, 0.08, 0.13, 0.19, 0.26];
-    const vols = [0.2, 0.14, 0.1, 0.07, 0.04];
-    for (let i = 0; i < delays.length; i++) {
-      setTimeout(() => this.marbleClack(vols[i]), delays[i] * 1000);
-    }
-  }
-
-  /** Mermer tas sesi: yuksek frekansli, cam gibi catirti. */
-  private marbleClack(vol = 0.1): void {
-    const ac = this.audio || this.ensureAudio();
-    if (!ac) return;
-    const t = ac.currentTime;
-    const len = Math.floor(ac.sampleRate * 0.035);
-    const buf = ac.createBuffer(1, len, ac.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) {
-      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
-    }
-    const src = ac.createBufferSource();
-    src.buffer = buf;
-    const hp = ac.createBiquadFilter();
-    hp.type = "highpass";
-    hp.frequency.value = 2800 + Math.random() * 1200;
-    hp.Q.value = 0.7;
-    const g = ac.createGain();
-    g.gain.setValueAtTime(vol, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
-    src.connect(hp);
-    hp.connect(g);
-    g.connect(ac.destination);
-    src.start();
-  }
-
-  /** Mermer tas yerlestirme sesi: tullu, kisa "clink". */
-  private marblePlace(): void {
-    const ac = this.audio || this.ensureAudio();
-    if (!ac) return;
-    const t = ac.currentTime;
-
-    // Ana tini: yuksek sine wave
-    const osc = ac.createOscillator();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(2200, t);
-    osc.frequency.exponentialRampToValueAtTime(1400, t + 0.06);
-    const oscG = ac.createGain();
-    oscG.gain.setValueAtTime(0.18, t);
-    oscG.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
-    osc.connect(oscG);
-    oscG.connect(ac.destination);
-    osc.start(t);
-    osc.stop(t + 0.1);
-
-    // Ust tini: kisa triangle
-    const osc2 = ac.createOscillator();
-    osc2.type = "triangle";
-    osc2.frequency.setValueAtTime(4400, t);
-    osc2.frequency.exponentialRampToValueAtTime(2800, t + 0.04);
-    const osc2G = ac.createGain();
-    osc2G.gain.setValueAtTime(0.08, t);
-    osc2G.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
-    osc2.connect(osc2G);
-    osc2G.connect(ac.destination);
-    osc2.start(t);
-    osc2.stop(t + 0.06);
-
-    // Hafif gurultu darbesi: carpma
-    const len = Math.floor(ac.sampleRate * 0.015);
-    const buf = ac.createBuffer(1, len, ac.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) {
-      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 5);
-    }
-    const src = ac.createBufferSource();
-    src.buffer = buf;
-    const hp = ac.createBiquadFilter();
-    hp.type = "highpass";
-    hp.frequency.value = 3000;
-    const g = ac.createGain();
-    g.gain.setValueAtTime(0.14, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.02);
-    src.connect(hp);
-    hp.connect(g);
-    g.connect(ac.destination);
-    src.start(t);
   }
 
   /** Sur sesi: karistirma ve dokulusteki karakteristik tas ritmi. */

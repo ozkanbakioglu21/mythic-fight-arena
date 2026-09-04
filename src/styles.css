@@ -161,6 +161,36 @@ body,
   pointer-events: none;
 }
 
+/* ---- Hoparlor butonu (sag ust) ---- */
+.mute-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  background: rgba(10,20,30,0.5);
+  border: 1px solid rgba(212,175,55,0.3);
+  border-radius: 8px;
+  color: #d4af37;
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, transform 0.1s;
+  backdrop-filter: blur(4px);
+}
+.mute-btn:hover {
+  background: rgba(212,175,55,0.15);
+  transform: scale(1.08);
+}
+.mute-btn:active {
+  transform: scale(0.92);
+}
+.mute-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
 /* ---- Mobil / dokunmatik ----
    Tuvali ekrana yaklaştır, butonları kompaktlaştır. */
 @media (max-width: 560px) {
