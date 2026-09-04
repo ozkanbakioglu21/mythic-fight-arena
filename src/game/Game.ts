@@ -1088,12 +1088,7 @@ export class Game {
         break;
       case "lose": this.tone(320, 0.5, "sawtooth", 0.12, 130); break;
       case "match":
-        // Kirilma sesi: sert caturtma + alcalan ton + parcacik sacilmasi
-        this.tone(420, 0.08, "square", 0.22, 120);
-        this.tone(180, 0.18, "sawtooth", 0.14, 60);
-        this.clack(0.28);
-        setTimeout(() => this.clack(0.14), 55);
-        setTimeout(() => this.clack(0.08), 110);
+        this.breakSound();
         break;
       case "win":
         [523, 659, 784, 1046].forEach((f, i) =>
@@ -1137,6 +1132,108 @@ export class Game {
     bp.connect(g);
     g.connect(ac.destination);
     src.start();
+  }
+
+  /** Gelismis kirilma sesi: cok katmanli agac kirilmasi. */
+  private breakSound(): void {
+    const ac = this.audio || this.ensureAudio();
+    if (!ac) return;
+    const t = ac.currentTime;
+
+    // 1) Sert caturtma: yuksek frekansli gurultu darbesi
+    const impactLen = Math.floor(ac.sampleRate * 0.04);
+    const impactBuf = ac.createBuffer(1, impactLen, ac.sampleRate);
+    const impactD = impactBuf.getChannelData(0);
+    for (let i = 0; i < impactLen; i++) {
+      impactD[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / impactLen, 4);
+    }
+    const impactSrc = ac.createBufferSource();
+    impactSrc.buffer = impactBuf;
+    const impactHp = ac.createBiquadFilter();
+    impactHp.type = "highpass";
+    impactHp.frequency.value = 1800;
+    const impactG = ac.createGain();
+    impactG.gain.setValueAtTime(0.35, t);
+    impactG.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    impactSrc.connect(impactHp);
+    impactHp.connect(impactG);
+    impactG.connect(ac.destination);
+    impactSrc.start(t);
+
+    // 2)altin catlak: kisa square wave cizi
+    const osc1 = ac.createOscillator();
+    osc1.type = "square";
+    osc1.frequency.setValueAtTime(520, t);
+    osc1.frequency.exponentialRampToValueAtTime(90, t + 0.07);
+    const osc1G = ac.createGain();
+    osc1G.gain.setValueAtTime(0.18, t);
+    osc1G.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+    osc1.connect(osc1G);
+    osc1G.connect(ac.destination);
+    osc1.start(t);
+    osc1.stop(t + 0.1);
+
+    // 3) Govde kirilmasi: alcalan sawtooth + gurultu katmani
+    const bodyLen = Math.floor(ac.sampleRate * 0.15);
+    const bodyBuf = ac.createBuffer(1, bodyLen, ac.sampleRate);
+    const bodyD = bodyBuf.getChannelData(0);
+    for (let i = 0; i < bodyLen; i++) {
+      bodyD[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bodyLen, 1.8);
+    }
+    const bodySrc = ac.createBufferSource();
+    bodySrc.buffer = bodyBuf;
+    const bodyBp = ac.createBiquadFilter();
+    bodyBp.type = "bandpass";
+    bodyBp.frequency.setValueAtTime(1200, t + 0.02);
+    bodyBp.frequency.exponentialRampToValueAtTime(200, t + 0.15);
+    bodyBp.Q.value = 0.8;
+    const bodyG = ac.createGain();
+    bodyG.gain.setValueAtTime(0.22, t + 0.02);
+    bodyG.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    bodySrc.connect(bodyBp);
+    bodyBp.connect(bodyG);
+    bodyG.connect(ac.destination);
+    bodySrc.start(t + 0.02);
+
+    const osc2 = ac.createOscillator();
+    osc2.type = "sawtooth";
+    osc2.frequency.setValueAtTime(200, t + 0.02);
+    osc2.frequency.exponentialRampToValueAtTime(50, t + 0.18);
+    const osc2G = ac.createGain();
+    osc2G.gain.setValueAtTime(0.12, t + 0.02);
+    osc2G.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+    osc2.connect(osc2G);
+    osc2G.connect(ac.destination);
+    osc2.start(t + 0.02);
+    osc2.stop(t + 0.22);
+
+    // 4) Rezonans kuyrugU: uzun sureli filtrelenmis gurultu
+    const resLen = Math.floor(ac.sampleRate * 0.25);
+    const resBuf = ac.createBuffer(1, resLen, ac.sampleRate);
+    const resD = resBuf.getChannelData(0);
+    for (let i = 0; i < resLen; i++) {
+      resD[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / resLen, 3);
+    }
+    const resSrc = ac.createBufferSource();
+    resSrc.buffer = resBuf;
+    const resBp = ac.createBiquadFilter();
+    resBp.type = "bandpass";
+    resBp.frequency.value = 600;
+    resBp.Q.value = 2;
+    const resG = ac.createGain();
+    resG.gain.setValueAtTime(0.08, t + 0.04);
+    resG.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+    resSrc.connect(resBp);
+    resBp.connect(resG);
+    resG.connect(ac.destination);
+    resSrc.start(t + 0.04);
+
+    // 5) Parca sacilmasi: 4 adet kisa clack, ritmik
+    const delays = [0.06, 0.11, 0.17, 0.24];
+    const vols = [0.18, 0.12, 0.08, 0.05];
+    for (let i = 0; i < delays.length; i++) {
+      setTimeout(() => this.clack(vols[i]), delays[i] * 1000);
+    }
   }
 
   /** Sur sesi: karistirma ve dokulusteki karakteristik tas ritmi. */
