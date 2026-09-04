@@ -1879,10 +1879,18 @@ export class Game {
       c.lineWidth = 1;
       c.stroke();
       if (i < this.tray.length) {
-        c.fillStyle = tileColor(this.tray[i].symbol);
-        c.font = "bold 26px " + CJK_FONT;
-        c.textBaseline = "middle";
-        c.fillText(faceLabel(this.tray[i].symbol), sx + slotW / 2, trayY - 8);
+        // Haznedeki tas: mini ceviz tas olarak gorunsun
+        const tt = this.tray[i];
+        const fh = 42;
+        const fw = fh * (this.tw / this.th);
+        const fx0 = sx + slotW / 2 - fw / 2;
+        const fy0 = trayY - 28 + (40 - fh) / 2;
+        c.save();
+        c.shadowColor = "rgba(0,0,0,0.55)";
+        c.shadowBlur = 7;
+        c.shadowOffsetY = 2;
+        c.drawImage(this.getFaceCanvas(tt.symbol, true), fx0, fy0, fw, fh);
+        c.restore();
       }
     }
     c.textBaseline = "alphabetic";
