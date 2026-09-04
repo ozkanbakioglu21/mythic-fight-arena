@@ -368,6 +368,7 @@ export class Game {
   private noiseBuf: AudioBuffer | null = null;
   private motto = "";
   private faceCache = new Map<string, HTMLCanvasElement>();
+  private matchFx: { x1: number; y1: number; x2: number; y2: number; timer: number; max: number } | null = null;
 
   onHud?: (h: HudState) => void;
 
@@ -769,6 +770,19 @@ export class Game {
     }
     if (!target) return;
 
+    // Eslesme kontrolu: haznede ayni desenden var mi?
+    let matchBoardTile: Tile | null = null;
+    {
+      const lastIdx = this.tray.length;
+      for (let i = 0; i < lastIdx; i++) {
+        if (matchKey(this.tray[i].symbol) === matchKey(target.symbol)) {
+          const mtt = this.tiles.find((tt) => tt.id === this.tray[i].id && !tt.removed && this.isOpen(tt));
+          if (mtt) matchBoardTile = mtt;
+          break;
+        }
+      }
+    }
+
     // Taşı tahtadan alıp hazneye tek tek ekle.
     target.removed = true;
     this.tray.push({ id: target.id, symbol: target.symbol });
@@ -783,6 +797,10 @@ export class Game {
       }
     }
     if (pairIdx !== -1) {
+      // Eslesme VFX: iki tas arasinda altin huzme
+      if (matchBoardTile) {
+        this.matchFx = { x1: matchBoardTile.sx, y1: matchBoardTile.sy, x2: target.sx, y2: target.sy, timer: 0.35, max: 0.35 };
+      }
       this.breakPair(pairIdx, lastIdx);
     } else if (this.tray.length >= this.maxTray()) {
       // Hazne doldu: oyuncu kaybeder.
@@ -890,6 +908,11 @@ export class Game {
       p.rot += p.vr * dt;
     }
     this.confetti = this.confetti.filter((p) => p.life > 0 && p.y < CANVAS_H + 40);
+    // Eslesme huzme animasyonu
+    if (this.matchFx) {
+      this.matchFx.timer -= dt;
+      if (this.matchFx.timer <= 0) this.matchFx = null;
+    }
   }
 
   /** Haznedeki 4 taşı parçalara ayırıp patlatır ve hazneyi boşaltır. */
@@ -1709,9 +1732,59 @@ export class Game {
         c.restore();
       } else {
         this.drawTile(c, { ...t, sy: t.sy + bob + lift }, open, sel, canT);
+        // Kilitli tas karartmasi: acik ama secilemeyen taslar
+        if (open && !canT && !sel && dk >= 1) {
+          c.save();
+          c.fillStyle = "rgba(0,0,0,0.38)";
+          c.beginPath();
+          c.roundRect(t.sx - this.tw / 2, (t.sy + bob + lift) - this.th / 2, this.tw, this.th, Math.max(4, Math.round(this.tw * 0.125)));
+          c.fill();
+          c.restore();
+        }
+        // Secili tas aurasi (turkuaz nabiz)
+        if (sel) {
+          const pulse = 0.22 + 0.10 * Math.sin(this.time * 5.5);
+          c.save();
+          c.shadowColor = "rgba(80,200,180," + pulse.toFixed(3) + ")";
+          c.shadowBlur = 18;
+          c.strokeStyle = "rgba(80,200,180," + (0.35 + 0.15 * Math.sin(this.time * 5.5)).toFixed(3) + ")";
+          c.lineWidth = 2.5;
+          c.beginPath();
+          c.roundRect(t.sx - this.tw / 2 - 3, (t.sy + bob + lift) - this.th / 2 - 3, this.tw + 6, this.th + 6, Math.max(5, Math.round(this.tw * 0.125) + 2));
+          c.stroke();
+          c.restore();
+        }
       }
     }
     this.drawHint(c);
+
+    // ---- Eslesme altin huzmesi ----
+    if (this.matchFx) {
+      const fx = this.matchFx;
+      const p = 1 - fx.timer / fx.max;
+      const sparkleT = this.time * 12;
+      // Ana huzme
+      c.save();
+      c.globalAlpha = (1 - p) * 0.8;
+      c.strokeStyle = "#ffd75e";
+      c.lineWidth = 2.5 - p * 1.5;
+      c.beginPath();
+      c.moveTo(fx.x1, fx.y1);
+      c.lineTo(fx.x2, fx.y2);
+      c.stroke();
+      // Huzme ustunde parcaciklar
+      for (let i = 0; i < 8; i++) {
+        const t2 = (i / 7 + p * 0.4) % 1;
+        const px = fx.x1 + (fx.x2 - fx.x1) * t2;
+        const py = fx.y1 + (fx.y2 - fx.y1) * t2 + Math.sin(sparkleT + i * 2.1) * 6;
+        c.globalAlpha = (1 - p) * (0.6 + 0.3 * Math.sin(sparkleT + i * 1.7));
+        c.fillStyle = "#ffe9a8";
+        c.beginPath();
+        c.arc(px, py, 2.5 + Math.sin(sparkleT + i) * 1.2, 0, Math.PI * 2);
+        c.fill();
+      }
+      c.restore();
+    }
 
     // ---- Eslesme patlamasi (parlak parcaciklar) ----
     for (const b of this.bursts) {
