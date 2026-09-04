@@ -2162,17 +2162,17 @@ export class Game {
       tamga(px + 12, py + 11, h * 0.045, 0);
       tamga(w / 2, py + 11, h * 0.045, 1);
       tamga(px + pw - 12, py + 11, h * 0.045, 2);
-      carve(NUM_CH[Number(kind.slice(1)) - 1], w / 2, h / 2 - h * 0.115, h * 0.36, "#2e1b0c");
-      carve("萬", w / 2, h / 2 + h * 0.175, h * 0.31, "#7e2f1c");
+      carve(NUM_CH[Number(kind.slice(1)) - 1], w / 2, h / 2 - h * 0.115, h * 0.36, "#f5e0b8");
+      carve("萬", w / 2, h / 2 + h * 0.175, h * 0.31, "#d4442a");
     } else if (kind === "E" || kind === "S" || kind === "W" || kind === "N") {
       m.strokeStyle = "rgba(22,12,5,0.65)";
       m.lineWidth = 1;
       m.strokeRect(px + 2.5, py + 2.5, pw - 5, ph - 5);
-      carve(WIND_CH[kind], w / 2, h / 2, h * 0.48, "#2e1b0c");
+      carve(WIND_CH[kind], w / 2, h / 2, h * 0.48, "#f5e0b8");
     } else if (kind === "DR") {
-      carve("中", w / 2, h / 2, h * 0.52, "#7e2f1c");
+      carve("中", w / 2, h / 2, h * 0.52, "#d4442a");
     } else if (kind === "DG") {
-      carve("發", w / 2, h / 2, h * 0.52, "#2f5c44");
+      carve("發", w / 2, h / 2, h * 0.52, "#3aad72");
     } else if (kind === "DW") {
       // Beyaz ejderha: oyulmus cift cerceve + merkez tamga.
       m.strokeStyle = "rgba(22,12,5,0.80)";
@@ -2183,14 +2183,14 @@ export class Game {
       m.strokeRect(px + w * 0.16, py + h * 0.18, pw - w * 0.32, ph - h * 0.36);
       tamga(w / 2, h / 2, h * 0.09, 1);
     } else if (kind[0] === "f") {
-      carve(FLOWER_CH[Number(kind.slice(1)) - 1], w / 2, h / 2 - h * 0.04, h * 0.4, "#7a2a3a");
-      carve(kind.slice(1), w / 2, h / 2 + h * 0.27, h * 0.16, "#6b4a1a");
+      carve(FLOWER_CH[Number(kind.slice(1)) - 1], w / 2, h / 2 - h * 0.04, h * 0.4, "#c44458");
+      carve(kind.slice(1), w / 2, h / 2 + h * 0.27, h * 0.16, "#c8a050");
       tamga(w / 2 - w * 0.3, h / 2 - h * 0.28, h * 0.04, 2);
       tamga(w / 2 + w * 0.3, h / 2 - h * 0.28, h * 0.04, 2);
     } else if (kind[0] === "s") {
       // Mevsim: harf + Gokturk boynuz burme cifti (sonbahar isi / kis yildizi).
       const n = Number(kind.slice(1));
-      carve(SEASON_CH[n - 1], w / 2, h / 2 - h * 0.05, h * 0.34, "#6b4a1a");
+      carve(SEASON_CH[n - 1], w / 2, h / 2 - h * 0.05, h * 0.34, "#c8a050");
       this.hornSpiral(m, w * 0.26, h * 0.3, h * 0.09, 1, 0.60);
       this.hornSpiral(m, w * 0.74, h * 0.3, h * 0.09, -1, 0.60);
       if (n === 3) {
@@ -2213,7 +2213,7 @@ export class Game {
       } else {
         tamga(w / 2, h * 0.72, h * 0.045, n === 1 ? 0 : 1);
       }
-      carve(kind.slice(1), w / 2, h / 2 + h * 0.3, h * 0.15, "#5a3d16");
+      carve(kind.slice(1), w / 2, h / 2 + h * 0.3, h * 0.15, "#b89040");
     }
   }
 
