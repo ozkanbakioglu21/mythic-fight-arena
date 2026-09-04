@@ -1071,8 +1071,12 @@ export class Game {
         break;
       case "lose": this.tone(320, 0.5, "sawtooth", 0.12, 130); break;
       case "match":
-        this.tone(660, 0.22, "sine", 0.18, 990);
-        this.tone(330, 0.14, "triangle", 0.09, 440);
+        // Kirilma sesi: sert caturtma + alcalan ton + parcacik sacilmasi
+        this.tone(420, 0.08, "square", 0.22, 120);
+        this.tone(180, 0.18, "sawtooth", 0.14, 60);
+        this.clack(0.28);
+        setTimeout(() => this.clack(0.14), 55);
+        setTimeout(() => this.clack(0.08), 110);
         break;
       case "win":
         [523, 659, 784, 1046].forEach((f, i) =>
