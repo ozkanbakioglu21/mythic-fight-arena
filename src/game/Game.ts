@@ -2012,7 +2012,7 @@ export class Game {
     m.beginPath();
     m.roundRect(px, py, pw, ph, pR);
     m.stroke();
-    m.strokeStyle = "rgba(235,190,130,0.13)";
+    m.strokeStyle = "rgba(235,190,130,0.28)";
     m.lineWidth = 1;
     m.beginPath();
     m.roundRect(px + 1.2, py + 1.6, pw - 2.4, ph - 2.4, pR - 1);
@@ -2037,8 +2037,8 @@ export class Game {
         m.stroke();
       }
       m.restore();
-      this.hornSpiral(m, w / 2 - w * 0.09, h / 2, h * 0.11, 1, 0.34);
-      this.hornSpiral(m, w / 2 + w * 0.09, h / 2, h * 0.11, -1, 0.34);
+      this.hornSpiral(m, w / 2 - w * 0.09, h / 2, h * 0.11, 1, 0.55);
+      this.hornSpiral(m, w / 2 + w * 0.09, h / 2, h * 0.11, -1, 0.55);
       return;
     }
     // ---- Kazima: cekintinin alt kenari isik + koyu inlay ----
@@ -2046,8 +2046,8 @@ export class Game {
       m.font = "bold " + Math.round(size) + "px " + CJK_FONT;
       m.textAlign = "center";
       m.textBaseline = "middle";
-      m.fillStyle = "rgba(240,200,140,0.22)";
-      m.fillText(ch, cx, cy + 1.1);
+      m.fillStyle = "rgba(255,220,170,0.50)";
+      m.fillText(ch, cx, cy + 1.2);
       m.fillStyle = color;
       m.fillText(ch, cx, cy);
     };
@@ -2055,7 +2055,7 @@ export class Game {
     const stone = (cx: number, cy: number, r: number) => {
       m.beginPath();
       m.arc(cx, cy, r + 1.6, 0, Math.PI * 2);
-      m.fillStyle = "rgba(15,8,3,0.6)";
+      m.fillStyle = "rgba(10,5,2,0.75)";
       m.fill();
       const g = m.createRadialGradient(cx - r * 0.35, cy - r * 0.4, r * 0.15, cx, cy, r);
       g.addColorStop(0, "#a8e6d8");
@@ -2065,15 +2065,15 @@ export class Game {
       m.beginPath();
       m.arc(cx, cy, r, 0, Math.PI * 2);
       m.fill();
-      m.strokeStyle = "rgba(20,50,45,0.35)";
+      m.strokeStyle = "rgba(15,60,50,0.50)";
       m.lineWidth = Math.max(0.6, r * 0.12);
       m.beginPath();
       m.moveTo(cx - r * 0.55, cy + r * 0.18);
       m.quadraticCurveTo(cx, cy - r * 0.12, cx + r * 0.55, cy + r * 0.32);
       m.stroke();
-      m.fillStyle = "rgba(255,255,255,0.75)";
+      m.fillStyle = "rgba(255,255,255,0.90)";
       m.beginPath();
-      m.ellipse(cx - r * 0.35, cy - r * 0.45, r * 0.22, r * 0.13, -0.6, 0, Math.PI * 2);
+      m.ellipse(cx - r * 0.35, cy - r * 0.45, r * 0.28, r * 0.16, -0.6, 0, Math.PI * 2);
       m.fill();
     };
     // Bambu inlayi: cekinti + sicak degrade + gunler + yan parlaklik.
@@ -2082,7 +2082,7 @@ export class Game {
       const y = cy - sh / 2;
       m.beginPath();
       m.roundRect(x - 1, y - 1, sw + 2, sh + 2, sw * 0.5);
-      m.fillStyle = "rgba(15,8,3,0.5)";
+      m.fillStyle = "rgba(10,5,2,0.65)";
       m.fill();
       const g = m.createLinearGradient(x, 0, x + sw, 0);
       g.addColorStop(0, shade(color, -30));
@@ -2092,7 +2092,7 @@ export class Game {
       m.beginPath();
       m.roundRect(x, y, sw, sh, sw * 0.5);
       m.fill();
-      m.strokeStyle = "rgba(12,30,18,0.5)";
+      m.strokeStyle = "rgba(8,24,14,0.70)";
       m.lineWidth = Math.max(0.7, sw * 0.14);
       m.beginPath();
       m.moveTo(x + sw * 0.15, y + sh * 0.32);
@@ -2100,7 +2100,7 @@ export class Game {
       m.moveTo(x + sw * 0.15, y + sh * 0.68);
       m.lineTo(x + sw * 0.85, y + sh * 0.68);
       m.stroke();
-      m.strokeStyle = "rgba(255,240,200,0.35)";
+      m.strokeStyle = "rgba(255,240,200,0.60)";
       m.lineWidth = Math.max(0.5, sw * 0.1);
       m.beginPath();
       m.moveTo(x + sw * 0.28, y + sw * 0.5);
@@ -2109,8 +2109,8 @@ export class Game {
     };
     // Geometrik Orhon tamgasi (kus / gun / koyun boynuzu).
     const tamga = (x: number, y: number, s: number, style: number) => {
-      m.strokeStyle = "rgba(232,186,126,0.42)";
-      m.lineWidth = 1;
+      m.strokeStyle = "rgba(232,186,126,0.72)";
+      m.lineWidth = 1.5;
       m.beginPath();
       if (style === 0) {
         m.moveTo(x, y - s);
@@ -2154,10 +2154,10 @@ export class Game {
       }
     } else if (kind[0] === "w") {
       // Karakter: kazima sayi + koyu kirmizi wan + ince Orhon tamga cercevesi.
-      m.strokeStyle = "rgba(22,12,5,0.5)";
+      m.strokeStyle = "rgba(22,12,5,0.70)";
       m.lineWidth = 1;
       m.strokeRect(px + 2.5, py + 2.5, pw - 5, ph - 5);
-      m.strokeStyle = "rgba(235,190,130,0.10)";
+      m.strokeStyle = "rgba(235,190,130,0.35)";
       m.strokeRect(px + 3.6, py + 3.6, pw - 7.2, ph - 7.2);
       tamga(px + 12, py + 11, h * 0.045, 0);
       tamga(w / 2, py + 11, h * 0.045, 1);
@@ -2165,7 +2165,7 @@ export class Game {
       carve(NUM_CH[Number(kind.slice(1)) - 1], w / 2, h / 2 - h * 0.115, h * 0.36, "#2e1b0c");
       carve("萬", w / 2, h / 2 + h * 0.175, h * 0.31, "#7e2f1c");
     } else if (kind === "E" || kind === "S" || kind === "W" || kind === "N") {
-      m.strokeStyle = "rgba(22,12,5,0.4)";
+      m.strokeStyle = "rgba(22,12,5,0.65)";
       m.lineWidth = 1;
       m.strokeRect(px + 2.5, py + 2.5, pw - 5, ph - 5);
       carve(WIND_CH[kind], w / 2, h / 2, h * 0.48, "#2e1b0c");
@@ -2175,10 +2175,10 @@ export class Game {
       carve("發", w / 2, h / 2, h * 0.52, "#2f5c44");
     } else if (kind === "DW") {
       // Beyaz ejderha: oyulmus cift cerceve + merkez tamga.
-      m.strokeStyle = "rgba(22,12,5,0.6)";
+      m.strokeStyle = "rgba(22,12,5,0.80)";
       m.lineWidth = Math.max(2, w * 0.055);
       m.strokeRect(px + w * 0.1, py + h * 0.12, pw - w * 0.2, ph - h * 0.24);
-      m.strokeStyle = "rgba(235,190,130,0.22)";
+      m.strokeStyle = "rgba(235,190,130,0.45)";
       m.lineWidth = 1;
       m.strokeRect(px + w * 0.16, py + h * 0.18, pw - w * 0.32, ph - h * 0.36);
       tamga(w / 2, h / 2, h * 0.09, 1);
@@ -2191,17 +2191,17 @@ export class Game {
       // Mevsim: harf + Gokturk boynuz burme cifti (sonbahar isi / kis yildizi).
       const n = Number(kind.slice(1));
       carve(SEASON_CH[n - 1], w / 2, h / 2 - h * 0.05, h * 0.34, "#6b4a1a");
-      this.hornSpiral(m, w * 0.26, h * 0.3, h * 0.09, 1, 0.4);
-      this.hornSpiral(m, w * 0.74, h * 0.3, h * 0.09, -1, 0.4);
+      this.hornSpiral(m, w * 0.26, h * 0.3, h * 0.09, 1, 0.60);
+      this.hornSpiral(m, w * 0.74, h * 0.3, h * 0.09, -1, 0.60);
       if (n === 3) {
-        m.fillStyle = "rgba(150,60,28,0.75)";
+        m.fillStyle = "rgba(150,60,28,0.92)";
         m.save();
         m.translate(w / 2, h * 0.72);
         m.rotate(Math.PI / 4);
         m.fillRect(-2.5, -2.5, 5, 5);
         m.restore();
       } else if (n === 4) {
-        m.strokeStyle = "rgba(216,203,178,0.55)";
+        m.strokeStyle = "rgba(216,203,178,0.80)";
         m.lineWidth = 1;
         m.beginPath();
         for (let i = 0; i < 8; i++) {
