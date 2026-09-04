@@ -2058,14 +2058,14 @@ export class Game {
       m.fillStyle = "rgba(10,5,2,0.75)";
       m.fill();
       const g = m.createRadialGradient(cx - r * 0.35, cy - r * 0.4, r * 0.15, cx, cy, r);
-      g.addColorStop(0, "#a8e6d8");
-      g.addColorStop(0.5, "#4fb3a0");
-      g.addColorStop(1, "#1d6357");
+      g.addColorStop(0, "#ffffff");
+      g.addColorStop(0.5, "#e8e0d4");
+      g.addColorStop(1, "#c8b8a0");
       m.fillStyle = g;
       m.beginPath();
       m.arc(cx, cy, r, 0, Math.PI * 2);
       m.fill();
-      m.strokeStyle = "rgba(15,60,50,0.50)";
+      m.strokeStyle = "rgba(80,60,40,0.30)";
       m.lineWidth = Math.max(0.6, r * 0.12);
       m.beginPath();
       m.moveTo(cx - r * 0.55, cy + r * 0.18);
