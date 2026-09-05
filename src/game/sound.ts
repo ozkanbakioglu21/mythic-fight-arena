@@ -1,227 +1,152 @@
 /**
- * Otuken Mahjong — Yerel Ses Motoru (Web Audio API Synthesizer).
- * Harici dosya gerektirmez, tamamen JavaScript ile sentezlenir.
+ * Otuken Mahjong — Stüdyo Kalitesinde Ses Motoru.
+ * Base64 WAV AudioBuffer ile sıfır gecikme, playback rate humanization.
  */
+import { TILE_CLICK_WAV, TILE_MATCH_WAV, COMBO_WAV, ERROR_WAV, UNDO_WAV } from "./sounds-data";
 
 const MUTE_KEY = "otuken_mahjong_mute";
 
-const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+let audioCtx: AudioContext | null = null;
+let masterGain: GainNode | null = null;
+let _muted = false;
+let _volume = 0.75; // 0..1
+let buffers: Map<string, AudioBuffer[]> = new Map();
 
-// Autoplay fix: ilk etkileşimde ctx'i baslat
-const unlock = () => {
+function ensureCtx(): AudioContext {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = _volume;
+    masterGain.connect(audioCtx.destination);
+  }
   if (audioCtx.state === "suspended") audioCtx.resume();
+  return audioCtx;
+}
+
+function ensureBuffers(): Map<string, AudioBuffer[]> {
+  if (buffers.size > 0) return buffers;
+  const ctx = ensureCtx();
+
+  // Pre-decode all sounds
+  const decodeAll = async (key: string, wavArr: string[]) => {
+    const decoded: AudioBuffer[] = [];
+    for (const wav of wavArr) {
+      const base64 = wav.split(",")[1];
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const ab = bytes.buffer;
+      try {
+        const audioBuf = await ctx.decodeAudioData(ab);
+        decoded.push(audioBuf);
+      } catch { /* skip bad buffer */ }
+    }
+    buffers.set(key, decoded);
+  };
+
+  // Fire all decode promises — they resolve before first user click typically
+  decodeAll("tileclick", TILE_CLICK_WAV);
+  decodeAll("match", TILE_MATCH_WAV);
+  decodeAll("combo", COMBO_WAV);
+  decodeAll("error", ERROR_WAV);
+  decodeAll("undo", UNDO_WAV);
+
+  return buffers;
+}
+
+function playBuffer(key: string, volumeScale = 1.0): void {
+  if (_muted) return;
+  const ctx = ensureCtx();
+  const bufs = ensureBuffers().get(key);
+  if (!bufs || bufs.length === 0) return;
+
+  const buf = bufs[Math.floor(Math.random() * bufs.length)];
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+
+  // Humanization: ±5% playback rate
+  src.playbackRate.value = 0.95 + Math.random() * 0.10;
+
+  const gain = ctx.createGain();
+  gain.gain.value = volumeScale;
+
+  src.connect(gain);
+  gain.connect(masterGain!);
+  src.start();
+
+  // Auto-disconnect for polyphony
+  src.onended = () => { src.disconnect(); gain.disconnect(); };
+}
+
+// ------------------------------------------------------------------
+// Autoplay fix
+// ------------------------------------------------------------------
+const unlock = () => {
+  ensureCtx();
   document.removeEventListener("click", unlock);
   document.removeEventListener("touchstart", unlock);
 };
 document.addEventListener("click", unlock, { once: true });
 document.addEventListener("touchstart", unlock, { once: true });
 
-let _muted = false;
-try { _muted = localStorage.getItem(MUTE_KEY) === "1"; } catch { /* ignore */ }
-
+// ------------------------------------------------------------------
+// Public API
+// ------------------------------------------------------------------
 function isMuted(): boolean { return _muted; }
+
 function setMuted(v: boolean) {
   _muted = v;
   try { localStorage.setItem(MUTE_KEY, v ? "1" : "0"); } catch { /* ignore */ }
 }
+
 function toggleMute(): boolean { setMuted(!_muted); return _muted; }
 
-// ------------------------------------------------------------------
-// 1. TAŞ ÇARPIŞMA SESİ — Tile Clack Synthesizer
-//    İki katman: gürültü darbesi + kemik rezonans çınlaması
-// ------------------------------------------------------------------
-function playWoodClick(): void {
-  if (_muted) return;
-  if (audioCtx.state === "suspended") audioCtx.resume();
-
-  const t = audioCtx.currentTime;
-  const humanize = () => 1 + (Math.random() * 0.10 - 0.05); // ±5%
-
-  // ---- Katman 1: Noise Burst (Gürültü Darbesi) ----
-  // 12ms beyaz gürültü → lowpass 1200Hz → çok hızlı sönümleme
-  const bufLen = Math.floor(audioCtx.sampleRate * 0.015); // 15ms
-  const noiseBuf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
-  const data = noiseBuf.getChannelData(0);
-  for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
-
-  const noiseSrc = audioCtx.createBufferSource();
-  noiseSrc.buffer = noiseBuf;
-
-  const noiseFilter = audioCtx.createBiquadFilter();
-  noiseFilter.type = "lowpass";
-  noiseFilter.frequency.value = 1200 * humanize();
-  noiseFilter.Q.value = 0.7;
-
-  const noiseGain = audioCtx.createGain();
-  noiseGain.gain.setValueAtTime(0.75, t);
-  noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.012);
-
-  noiseSrc.connect(noiseFilter);
-  noiseFilter.connect(noiseGain);
-  noiseGain.connect(audioCtx.destination);
-  noiseSrc.start(t);
-  noiseSrc.stop(t + 0.015);
-  noiseSrc.onended = () => { noiseSrc.disconnect(); noiseFilter.disconnect(); noiseGain.disconnect(); };
-
-  // ---- Katman 2: Resonance Click (Kemik Rezonans) ----
-  // İki triangle osilatör: 1800Hz + 2400Hz, 30ms sönümleme
-  for (const baseFreq of [1800, 2400]) {
-    const osc = audioCtx.createOscillator();
-    osc.type = "triangle";
-    osc.frequency.value = baseFreq * humanize();
-
-    const oscGain = audioCtx.createGain();
-    oscGain.gain.setValueAtTime(0.18, t);
-    oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
-
-    osc.connect(oscGain);
-    oscGain.connect(audioCtx.destination);
-    osc.start(t);
-    osc.stop(t + 0.035);
-    osc.onended = () => { osc.disconnect(); oscGain.disconnect(); };
-  }
+function setVolume(v: number) {
+  _volume = Math.max(0, Math.min(1, v));
+  if (masterGain) masterGain.gain.value = _volume;
 }
 
-// ------------------------------------------------------------------
-// 2. TAŞI ZEMİNE OTURTMA SESİ (Tok Pürüzsüz Vuruş)
-// ------------------------------------------------------------------
-function playPlace(): void {
-  if (_muted) return;
-  if (audioCtx.state === "suspended") audioCtx.resume();
+function getVolume(): number { return _volume; }
 
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(140, audioCtx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.08);
-
-  gain.gain.setValueAtTime(0.9, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
-
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-
-  osc.start();
-  osc.stop(audioCtx.currentTime + 0.08);
-}
-
-// ------------------------------------------------------------------
-// 3. ODA TAMAMLAMA / CİLA EFEKTİ (Yumuşak Ksilofon / Çan)
-// ------------------------------------------------------------------
-function playSuccess(): void {
-  if (_muted) return;
-  if (audioCtx.state === "suspended") audioCtx.resume();
-
-  const notes = [261.63, 329.63, 392.00, 523.25]; // C E G C
-  notes.forEach((freq, i) => {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-
-    osc.type = "sine";
-    osc.frequency.value = freq;
-
-    const startTime = audioCtx.currentTime + i * 0.09;
-    gain.gain.setValueAtTime(0.3, startTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.4);
-
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-
-    osc.start(startTime);
-    osc.stop(startTime + 0.4);
-  });
-}
-
-// ------------------------------------------------------------------
-// 4. KOMBO SESİ (Yukselen ton)
-// ------------------------------------------------------------------
-function playCombo(level: number): void {
-  if (_muted) return;
-  if (audioCtx.state === "suspended") audioCtx.resume();
-
-  const freq = 440 * Math.pow(1.2, Math.min(level, 12));
-  const t = audioCtx.currentTime;
-
-  const osc = audioCtx.createOscillator();
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(freq, t);
-  osc.frequency.exponentialRampToValueAtTime(freq * 1.5, t + 0.12);
-
-  const g = audioCtx.createGain();
-  g.gain.setValueAtTime(0.2, t);
-  g.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
-
-  osc.connect(g);
-  g.connect(audioCtx.destination);
-  osc.start(t);
-  osc.stop(t + 0.16);
-}
-
-// ------------------------------------------------------------------
-// 5. HATA SESİ (Tok sawtooth)
-// ------------------------------------------------------------------
-function playError(): void {
-  if (_muted) return;
-  if (audioCtx.state === "suspended") audioCtx.resume();
-
-  const t = audioCtx.currentTime;
-
-  const osc = audioCtx.createOscillator();
-  osc.type = "sawtooth";
-  osc.frequency.value = 100;
-
-  const g = audioCtx.createGain();
-  g.gain.setValueAtTime(0.14, t);
-  g.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-
-  osc.connect(g);
-  g.connect(audioCtx.destination);
-  osc.start(t);
-  osc.stop(t + 0.12);
-}
-
-// ------------------------------------------------------------------
-// Geriye donuk uyumluluk: eski sfx() switch'ini destekler
-// ------------------------------------------------------------------
 function play(name: string, comboLevel?: number): void {
   switch (name) {
     case "pick":
     case "tileclick":
-      playWoodClick();
+      playBuffer("tileclick");
       break;
     case "match":
-      playWoodClick();
+      playBuffer("match", 1.0);
       break;
     case "combo":
-      playCombo(comboLevel ?? 1);
+      playBuffer("combo", 0.7 + Math.min((comboLevel ?? 1) * 0.08, 0.3));
       break;
     case "lose":
-      playError();
+      playBuffer("error");
       break;
     case "win":
-      playSuccess();
+      playBuffer("combo", 1.0);
       break;
     case "undo":
-      playPlace();
+      playBuffer("undo");
       break;
     case "hint":
-      playWoodClick();
+      playBuffer("tileclick", 0.6);
       break;
     case "shuffle":
-      playPlace();
+      playBuffer("match", 0.5);
       break;
   }
 }
+
+// Load mute state from localStorage
+try { _muted = localStorage.getItem(MUTE_KEY) === "1"; } catch { /* ignore */ }
 
 export const SoundEngine = {
   isMuted,
   setMuted,
   toggleMute,
   play,
-  playWoodClick,
-  playPlace,
-  playSuccess,
-  playCombo,
-  playError,
+  setVolume,
+  getVolume,
+  ensureBuffers,
 };

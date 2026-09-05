@@ -7,6 +7,7 @@ export default function App() {
   const [hud, setHud] = useState<HudState | null>(null);
   const [levelCount, setLevelCount] = useState(12);
   const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(0.75);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -47,26 +48,44 @@ export default function App() {
     setMuted(newMuted);
   };
 
+  const handleVolume = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = parseFloat(e.target.value);
+    setVolume(v);
+    gameRef.current?.getSound().setVolume(v);
+  };
+
   return (
     <div className="game-shell">
       <div className="arena">
         <canvas ref={canvasRef} className="arena-canvas" />
-        {/* Hoparlör butonu */}
-        <button className="mute-btn" onClick={handleMute} title={muted ? "Sesi Aç" : "Sesi Kapat"}>
-          {muted ? (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-              <line x1="23" y1="9" x2="17" y2="15" />
-              <line x1="17" y1="9" x2="23" y2="15" />
-            </svg>
-          ) : (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-            </svg>
-          )}
-        </button>
+        {/* Ses kontrolü */}
+        <div className="sound-controls">
+          <button className="mute-btn" onClick={handleMute} title={muted ? "Sesi Aç" : "Sesi Kapat"}>
+            {muted ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                <line x1="23" y1="9" x2="17" y2="15" />
+                <line x1="17" y1="9" x2="23" y2="15" />
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+              </svg>
+            )}
+          </button>
+          <input
+            type="range"
+            className="volume-slider"
+            min="0"
+            max="1"
+            step="0.05"
+            value={muted ? 0 : volume}
+            onChange={handleVolume}
+            title={`Ses: ${Math.round((muted ? 0 : volume) * 100)}%`}
+          />
+        </div>
         {won && (
           <div className="win-banner">
             <div className="win-title">Başardın!</div>

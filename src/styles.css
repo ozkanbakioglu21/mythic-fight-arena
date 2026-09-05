@@ -202,15 +202,11 @@ body,
 
 /* ---- Hoparlor butonu (sag ust) ---- */
 .mute-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 10;
   background: linear-gradient(145deg, #8b6530, #6b4820);
   border: 2px solid rgba(212,175,55,0.5);
   border-radius: 50%;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   color: #f5ecd8;
   padding: 0;
   cursor: pointer;
@@ -219,6 +215,7 @@ body,
   justify-content: center;
   transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
   box-shadow: 0 2px 6px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.12);
+  flex-shrink: 0;
 }
 .mute-btn:hover {
   background: linear-gradient(145deg, #a07535, #7a5525);
@@ -231,6 +228,47 @@ body,
 .mute-btn svg {
   width: 20px;
   height: 20px;
+}
+
+.sound-controls {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 70px;
+  height: 6px;
+  background: linear-gradient(90deg, #8b6530, #d4af37);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #f5ecd8, #c8b898);
+  border: 2px solid #8b6530;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  cursor: pointer;
+}
+.volume-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #f5ecd8, #c8b898);
+  border: 2px solid #8b6530;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  cursor: pointer;
 }
 
 /* ---- Mobil / dokunmatik ----
