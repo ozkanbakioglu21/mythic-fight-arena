@@ -1600,12 +1600,25 @@ export class Game {
   private render(): void {
     const c = this.ctx;
     const def = this.level();
-    // Arka plan: seviyeye göre buz + Göktürk tonu.
+    // Arka plan: koyu yesil/mavi kece dokusu.
     const g = c.createLinearGradient(0, 0, 0, CANVAS_H);
-    g.addColorStop(0, def.bg[0]);
-    g.addColorStop(1, def.bg[1]);
+    g.addColorStop(0, "#0a1e2a");
+    g.addColorStop(0.5, "#0d2a38");
+    g.addColorStop(1, "#081820");
     c.fillStyle = g;
     c.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    // Kece dokusu: ince yatay cizgiler
+    c.save();
+    c.globalAlpha = 0.04;
+    for (let i = 0; i < CANVAS_H; i += 4) {
+      c.strokeStyle = i % 8 === 0 ? "#2a4a3a" : "#1a3a4a";
+      c.lineWidth = 0.5;
+      c.beginPath();
+      c.moveTo(0, i);
+      c.lineTo(CANVAS_W, i);
+      c.stroke();
+    }
+    c.restore();
     this.drawMotifs(c);
     this.drawAmbient(c);
     // Sinematik vinyet (kenar karartma).
@@ -1884,15 +1897,41 @@ export class Game {
     c.textBaseline = "alphabetic";
 
 
-    // Üst şerit: istatistik (portrede üstte ortalanmış).
+    // Üst şerit: ahşap bar + istatistik.
     const remaining = this.tiles.filter((t) => !t.removed).length;
     const total = this.tiles.length;
+    // Ahşap bar arka planı
+    c.save();
+    const barY = 96;
+    const barH = 62;
+    const barG = c.createLinearGradient(0, barY, 0, barY + barH);
+    barG.addColorStop(0, "rgba(60,40,18,0.85)");
+    barG.addColorStop(0.5, "rgba(50,32,14,0.90)");
+    barG.addColorStop(1, "rgba(40,25,10,0.85)");
+    c.fillStyle = barG;
+    c.beginPath();
+    c.roundRect(16, barY, CANVAS_W - 32, barH, 12);
+    c.fill();
+    // Ahşap kenar）
+    c.strokeStyle = "rgba(212,175,55,0.4)";
+    c.lineWidth = 1.5;
+    c.stroke();
+    // İçerneк parıltı
+    const barHi = c.createLinearGradient(0, barY, 0, barY + barH);
+    barHi.addColorStop(0, "rgba(255,255,255,0.08)");
+    barHi.addColorStop(0.4, "rgba(255,255,255,0)");
+    barHi.addColorStop(1, "rgba(0,0,0,0.1)");
+    c.fillStyle = barHi;
+    c.beginPath();
+    c.roundRect(16, barY, CANVAS_W - 32, barH, 12);
+    c.fill();
+    c.restore();
     c.fillStyle = "#ffd75e";
     c.font = "bold 18px Georgia";
     c.textAlign = "center";
     let topLine = `Puan: ${this.score}`;
     if (this.combo > 1 && this.comboTimer > 0) topLine += `   Combo ×${this.combo}`;
-    c.fillText(topLine, CANVAS_W / 2, 116);
+    c.fillText(topLine, CANVAS_W / 2, barY + 24);
     // Kombo gosterigi (sag ust)
     if (this.combo > 1 && this.comboTimer > 0) {
       const cAlpha = Math.min(1, this.comboTimer / 0.8);
@@ -1901,18 +1940,17 @@ export class Game {
       c.globalAlpha = cAlpha;
       c.textAlign = "right";
       c.font = "bold 28px Georgia";
-      // Aleve/yansi efekti
       c.shadowColor = "rgba(255,150,40,0.7)";
       c.shadowBlur = 14;
       c.fillStyle = "rgba(255,180,40," + cPulse.toFixed(2) + ")";
-      c.fillText(`×${this.combo} Kombo`, CANVAS_W - 24, 116);
+      c.fillText(`×${this.combo} Kombo`, CANVAS_W - 36, barY + 24);
       c.shadowBlur = 0;
       c.fillStyle = "#ffd75e";
-      c.fillText(`×${this.combo} Kombo`, CANVAS_W - 24, 116);
+      c.fillText(`×${this.combo} Kombo`, CANVAS_W - 36, barY + 24);
       c.restore();
     }
     c.fillStyle = "#d4e8f2";
-    c.fillText(`Kalan: ${remaining}/${total}   Hamle: ${this.moves}   Süre: ${Math.floor(this.seconds)} sn   Karıştır: ${this.maxShuffles - this.shuffleCount}`, CANVAS_W / 2, 144);
+    c.fillText(`Kalan: ${remaining}/${total}   Hamle: ${this.moves}   Süre: ${Math.floor(this.seconds)} sn   Karıştır: ${this.maxShuffles - this.shuffleCount}`, CANVAS_W / 2, barY + 48);
 
     // Alttaki kısayollar (haznenin üstü).
     c.fillStyle = "rgba(200,145,80,0.65)";
@@ -2047,9 +2085,9 @@ export class Game {
     };
     // ---- Ceviz tabani ----
     const bg = m.createLinearGradient(0, 0, 0, h);
-    bg.addColorStop(0, open ? "#6d482a" : "#332012");
-    bg.addColorStop(0.5, open ? "#5c3b22" : "#2a1a10");
-    bg.addColorStop(1, open ? "#402713" : "#1d1007");
+    bg.addColorStop(0, open ? "#f5ecd8" : "#6b1a1a");
+    bg.addColorStop(0.5, open ? "#e8dcc0" : "#4a1010");
+    bg.addColorStop(1, open ? "#d4c8a8" : "#320808");
     m.fillStyle = bg;
     m.beginPath();
     m.roundRect(0, 0, w, h, R);
@@ -2060,7 +2098,7 @@ export class Game {
     m.clip();
     for (let i = 0; i < 11; i++) {
       const y0 = (h / 11) * i + rnd() * 4;
-      m.strokeStyle = rnd() > 0.5 ? "rgba(28,16,6,0.28)" : "rgba(226,178,116,0.07)";
+      m.strokeStyle = rnd() > 0.5 ? "rgba(60,40,20,0.18)" : "rgba(200,180,140,0.12)";
       m.lineWidth = 0.8 + rnd() * 0.9;
       m.beginPath();
       m.moveTo(-2, y0);
@@ -2071,7 +2109,7 @@ export class Game {
       m.stroke();
     }
     // Agac gumlusu
-    m.strokeStyle = "rgba(30,18,7,0.20)";
+    m.strokeStyle = "rgba(80,20,20,0.25)";
     m.lineWidth = 1;
     const kx = w * (0.2 + rnd() * 0.6);
     const ky = h * (0.15 + rnd() * 0.7);
@@ -2088,18 +2126,18 @@ export class Game {
     const ph = h - py * 2;
     const pR = Math.max(3, R - 2);
     const pg = m.createLinearGradient(0, py, 0, py + ph);
-    pg.addColorStop(0, open ? "#6b4526" : "#2e1d11");
-    pg.addColorStop(1, open ? "#4a2d16" : "#20130a");
+    pg.addColorStop(0, open ? "#f0e4cc" : "#5a1515");
+    pg.addColorStop(1, open ? "#ddd0b4" : "#3a0c0c");
     m.fillStyle = pg;
     m.beginPath();
     m.roundRect(px, py, pw, ph, pR);
     m.fill();
-    m.strokeStyle = "rgba(18,10,4,0.55)";
+    m.strokeStyle = "rgba(80,60,30,0.35)";
     m.lineWidth = 1.4;
     m.beginPath();
     m.roundRect(px, py, pw, ph, pR);
     m.stroke();
-    m.strokeStyle = "rgba(235,190,130,0.28)";
+    m.strokeStyle = "rgba(255,245,220,0.45)";
     m.lineWidth = 1;
     m.beginPath();
     m.roundRect(px + 1.2, py + 1.6, pw - 2.4, ph - 2.4, pR - 1);
@@ -2111,7 +2149,7 @@ export class Game {
       m.roundRect(px, py, pw, ph, pR);
       m.clip();
       m.globalAlpha = 0.09;
-      m.strokeStyle = "#d8a86a";
+      m.strokeStyle = "#8a3030";
       m.lineWidth = 1;
       for (let i = -h; i < w + h; i += 7) {
         m.beginPath();
@@ -2133,7 +2171,7 @@ export class Game {
       m.font = "bold " + Math.round(size) + "px " + CJK_FONT;
       m.textAlign = "center";
       m.textBaseline = "middle";
-      m.fillStyle = "rgba(255,220,170,0.50)";
+      m.fillStyle = "rgba(255,250,240,0.65)";
       m.fillText(ch, cx, cy + 1.2);
       m.fillStyle = color;
       m.fillText(ch, cx, cy);
@@ -2360,23 +2398,23 @@ export class Game {
     const R = Math.max(4, Math.round(w * 0.125));
 
     // ---- Renk paleti (ceviz: acik = yagli, kapali = golegde) ----
-    const faceTop = open ? "#6d482a" : "#332012";
-    const faceBot = open ? "#402713" : "#1d1007";
-    const rim = open ? "#a9713d" : "#3a2a1c";
+    const faceTop = open ? "#f5ecd8" : "#6b1a1a";
+    const faceBot = open ? "#d4c8a8" : "#320808";
+    const rim = open ? "#c8b898" : "#5a1212";
 
     // ---- Cift katmanli golge: yakin temas + derinlik ----
     const ly = this.lifts.get(t.id) ?? 0;
     const layerDepth = t.layer * 2.8;
     // 1) Yakin temas golgesi (keskin, hemen altinda)
-    c.fillStyle = "rgba(0,0,0," + (0.75 + ly * 0.02).toFixed(3) + ")";
+    c.fillStyle = "rgba(0,0,0," + (0.85 + ly * 0.02).toFixed(3) + ")";
     c.beginPath();
-    c.roundRect(x + 2 - ly * 0.4, yTop + 4 - ly * 0.8, w, h, R + 1);
+    c.roundRect(x + 1 - ly * 0.3, yTop + 3 - ly * 0.7, w + 2, h + 1, R + 2);
     c.fill();
     // 2) Derinlik golgesi (yumusak, katman yuksekligine gore genisler)
     c.save();
     c.shadowColor = "rgba(0,0,0,0.5)";
-    c.shadowBlur = 14 + layerDepth;
-    c.shadowOffsetY = 6 + layerDepth * 0.7;
+    c.shadowBlur = 20 + layerDepth * 1.5;
+    c.shadowOffsetY = 10 + layerDepth;
     c.fillStyle = "rgba(0,0,0,0.01)";
     c.beginPath();
     c.roundRect(x, yTop, w, h, R);
@@ -2385,21 +2423,21 @@ export class Game {
 
     // ---- Yan kalinlik (3D extrusion: 6px derinlik) ----
     const sideH = 6 + layerDepth * 0.4;
-    c.fillStyle = open ? "#2e1a0d" : "#150d06";
+    c.fillStyle = open ? "#b8a888" : "#4a1010";
     c.beginPath();
     c.roundRect(x + 1.5, yTop + sideH, w, h, R);
     c.fill();
     // Yan kenar parcasi (sag)
-    c.fillStyle = open ? "#1f1208" : "#0e0804";
+    c.fillStyle = open ? "#9a8a70" : "#380a0a";
     c.beginPath();
     c.roundRect(x + w - 2.5, yTop + sideH * 0.6, 3, h * 0.85, 1);
     c.fill();
 
     // ---- Govde: 135 derece egimli degrade (bombeli yuzey hissi) ----
     const bg = c.createLinearGradient(x, yTop, x + w, yTop + h);
-    bg.addColorStop(0, open ? "#7a5535" : "#3a2215");
+    bg.addColorStop(0, open ? "#faf4e6" : "#7a2020");
     bg.addColorStop(0.35, faceTop);
-    bg.addColorStop(0.65, open ? "#5c3b22" : "#2a1a10");
+    bg.addColorStop(0.65, open ? "#e0d4b8" : "#4a1010");
     bg.addColorStop(1, faceBot);
     c.fillStyle = bg;
     c.beginPath();
@@ -2408,15 +2446,15 @@ export class Game {
 
     // ---- 3D Bevel: sol-ust parlak + sag-alt koyu ----
     // Sag-alt: kalin karanlik bevel
-    c.strokeStyle = "rgba(0,0,0,0.55)";
-    c.lineWidth = 3;
+    c.strokeStyle = "rgba(0,0,0,0.45)";
+    c.lineWidth = 2.5;
     c.beginPath();
     c.moveTo(x + R + 1, yTop + h - 1.5);
     c.lineTo(x + w - 3, yTop + h - 1.5);
     c.lineTo(x + w - 1.5, yTop + R + 1);
     c.stroke();
     // Sol-ust: parlak isik cizgisi
-    c.strokeStyle = "rgba(255,255,255,0.22)";
+    c.strokeStyle = "rgba(255,255,255,0.45)";
     c.lineWidth = 1;
     c.beginPath();
     c.moveTo(x + R, yTop + 1);
@@ -2425,8 +2463,8 @@ export class Game {
     c.stroke();
 
     // ---- Dis cerceve (3D kalınlık) ----
-    c.strokeStyle = selected ? "#ffb020" : rim;
-    c.lineWidth = selected ? 3.5 : 2.5;
+    c.strokeStyle = selected ? "#ffd700" : rim;
+    c.lineWidth = selected ? 3.5 : 2;
     c.beginPath();
     c.roundRect(x, yTop, w, h, R);
     c.stroke();
@@ -2446,7 +2484,7 @@ export class Game {
         yTop + h * 0.28,
         w * 0.95,
       );
-      gA.addColorStop(0, "rgba(255,255,255,0.16)");
+      gA.addColorStop(0, "rgba(255,255,255,0.35)");
       gA.addColorStop(1, "rgba(255,255,255,0)");
       c.fillStyle = gA;
       c.beginPath();
@@ -2456,7 +2494,7 @@ export class Game {
       c.save();
       const gB = c.createLinearGradient(0, yTop + h * 0.45, 0, yTop + h);
       gB.addColorStop(0, "rgba(120,80,20,0)");
-      gB.addColorStop(1, "rgba(120,80,20,0.13)");
+      gB.addColorStop(1, "rgba(180,150,80,0.10)");
       c.fillStyle = gB;
       c.beginPath();
       c.roundRect(x + 2, yTop + 2, w - 4, h - 4, R - 1);
@@ -2465,7 +2503,7 @@ export class Game {
       // ---- Parilti suburmesi (lak uberinde kayan isik dalgasi) ----
       const sw0 = ((this.time * 140) % 2100) - 300;
       const dd = (t.sx + t.sy * 0.85 - sw0) / 150;
-      const shA = Math.exp(-dd * dd) * 0.13;
+      const shA = Math.exp(-dd * dd) * 0.20;
       if (shA > 0.004) {
         const gl = c.createLinearGradient(x, yTop, x + w * 0.7, yTop + h);
         gl.addColorStop(0, "rgba(255,250,230,0)");
@@ -2480,7 +2518,7 @@ export class Game {
 
     // ---- Hover isik cercevesi ----
     if (!selected && this.hoverId === t.id) {
-      c.strokeStyle = "rgba(255,225,160,0.4)";
+      c.strokeStyle = "rgba(255,225,160,0.55)";
       c.lineWidth = 2;
       c.beginPath();
       c.roundRect(x - 2.5, yTop - 2.5, w + 5, h + 5, R);

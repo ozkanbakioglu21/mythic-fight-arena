@@ -108,13 +108,14 @@ export default function App() {
           Yeni Oyun (N)
         </button>
         <button className="btn tbtn power-btn" onClick={() => gameRef.current?.undo()}>
-          Zamanı Çevir (U)
+          <span>⏪</span><span>Geri</span>
         </button>
         <button className="btn tbtn power-btn" onClick={() => gameRef.current?.hint()}>
-          Gök Görüşü (H)
+          <span>👁️</span><span>İpucu</span>
         </button>
         <button className="btn tbtn power-btn" disabled={!hud || hud.shuffles <= 0} onClick={() => gameRef.current?.shuffle()}>
-          Bozkurt Rüzgarı ({hud?.shuffles ?? 0})
+          <span>🔀</span><span>Karıştır</span>
+          {hud && hud.shuffles > 0 && <span className="badge">{hud.shuffles}</span>}
         </button>
         <button className="btn tbtn" onClick={() => gameRef.current?.nextLevel()}>
           Sonraki (L)
