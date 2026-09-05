@@ -2171,8 +2171,15 @@ export class Game {
       m.font = "bold " + Math.round(size) + "px " + CJK_FONT;
       m.textAlign = "center";
       m.textBaseline = "middle";
-      m.fillStyle = "rgba(255,250,240,0.65)";
-      m.fillText(ch, cx, cy + 1.2);
+      // Koyu halo (arka plan kontrastı)
+      m.strokeStyle = "rgba(0,0,0,0.45)";
+      m.lineWidth = Math.max(2, size * 0.06);
+      m.lineJoin = "round";
+      m.strokeText(ch, cx, cy);
+      // Işık kenar (alt katman)
+      m.fillStyle = "rgba(255,250,240,0.70)";
+      m.fillText(ch, cx, cy + 1.5);
+      // Ana sembol
       m.fillStyle = color;
       m.fillText(ch, cx, cy);
     };
@@ -2184,8 +2191,8 @@ export class Game {
       m.fill();
       const g = m.createRadialGradient(cx - r * 0.35, cy - r * 0.4, r * 0.15, cx, cy, r);
       g.addColorStop(0, "#ffffff");
-      g.addColorStop(0.5, "#e8e0d4");
-      g.addColorStop(1, "#c8b8a0");
+      g.addColorStop(0.4, "#e8e0d4");
+      g.addColorStop(1, "#b8a890");
       m.fillStyle = g;
       m.beginPath();
       m.arc(cx, cy, r, 0, Math.PI * 2);
@@ -2234,8 +2241,8 @@ export class Game {
     };
     // Geometrik Orhon tamgasi (kus / gun / koyun boynuzu).
     const tamga = (x: number, y: number, s: number, style: number) => {
-      m.strokeStyle = "rgba(232,186,126,0.72)";
-      m.lineWidth = 1.5;
+      m.strokeStyle = "rgba(180,130,70,0.80)";
+      m.lineWidth = 1.8;
       m.beginPath();
       if (style === 0) {
         m.moveTo(x, y - s);
@@ -2287,17 +2294,17 @@ export class Game {
       tamga(px + 12, py + 11, h * 0.045, 0);
       tamga(w / 2, py + 11, h * 0.045, 1);
       tamga(px + pw - 12, py + 11, h * 0.045, 2);
-      carve(NUM_CH[Number(kind.slice(1)) - 1], w / 2, h / 2 - h * 0.115, h * 0.36, "#f5e0b8");
-      carve("萬", w / 2, h / 2 + h * 0.175, h * 0.31, "#d4442a");
+      carve(NUM_CH[Number(kind.slice(1)) - 1], w / 2, h / 2 - h * 0.115, h * 0.40, "#ffe0a0");
+      carve("萬", w / 2, h / 2 + h * 0.175, h * 0.34, "#e8442a");
     } else if (kind === "E" || kind === "S" || kind === "W" || kind === "N") {
       m.strokeStyle = "rgba(22,12,5,0.65)";
       m.lineWidth = 1;
       m.strokeRect(px + 2.5, py + 2.5, pw - 5, ph - 5);
-      carve(WIND_CH[kind], w / 2, h / 2, h * 0.48, "#f5e0b8");
+      carve(WIND_CH[kind], w / 2, h / 2, h * 0.52, "#ffe0a0");
     } else if (kind === "DR") {
-      carve("中", w / 2, h / 2, h * 0.52, "#d4442a");
+      carve("中", w / 2, h / 2, h * 0.56, "#e8442a");
     } else if (kind === "DG") {
-      carve("發", w / 2, h / 2, h * 0.52, "#3aad72");
+      carve("發", w / 2, h / 2, h * 0.56, "#44cc88");
     } else if (kind === "DW") {
       // Beyaz ejderha: oyulmus cift cerceve + merkez tamga.
       m.strokeStyle = "rgba(22,12,5,0.80)";
@@ -2308,14 +2315,14 @@ export class Game {
       m.strokeRect(px + w * 0.16, py + h * 0.18, pw - w * 0.32, ph - h * 0.36);
       tamga(w / 2, h / 2, h * 0.09, 1);
     } else if (kind[0] === "f") {
-      carve(FLOWER_CH[Number(kind.slice(1)) - 1], w / 2, h / 2 - h * 0.04, h * 0.4, "#c44458");
-      carve(kind.slice(1), w / 2, h / 2 + h * 0.27, h * 0.16, "#c8a050");
+      carve(FLOWER_CH[Number(kind.slice(1)) - 1], w / 2, h / 2 - h * 0.04, h * 0.44, "#e85468");
+      carve(kind.slice(1), w / 2, h / 2 + h * 0.27, h * 0.18, "#dab050");
       tamga(w / 2 - w * 0.3, h / 2 - h * 0.28, h * 0.04, 2);
       tamga(w / 2 + w * 0.3, h / 2 - h * 0.28, h * 0.04, 2);
     } else if (kind[0] === "s") {
       // Mevsim: harf + Gokturk boynuz burme cifti (sonbahar isi / kis yildizi).
       const n = Number(kind.slice(1));
-      carve(SEASON_CH[n - 1], w / 2, h / 2 - h * 0.05, h * 0.34, "#c8a050");
+      carve(SEASON_CH[n - 1], w / 2, h / 2 - h * 0.05, h * 0.38, "#dab050");
       this.hornSpiral(m, w * 0.26, h * 0.3, h * 0.09, 1, 0.60);
       this.hornSpiral(m, w * 0.74, h * 0.3, h * 0.09, -1, 0.60);
       if (n === 3) {
