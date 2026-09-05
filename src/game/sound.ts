@@ -1,68 +1,39 @@
 /**
- * Otuken Mahjong — Basit Ses Motoru (HTML5 Audio).
- * Preload + cloneNode ile sıfır gecikme, havuz yok.
+ * Otuken Mahjong — Basit Ses Yoneticisi.
+ * Her cagrimda yeni Audio() olustur, play().catch() ile engelleri yut.
  */
 
 const MUTE_KEY = "otuken_mahjong_mute";
 const VOL_KEY = "otuken_mahjong_vol";
-
 let _muted = false;
-let _volume = 0.6;
-
+let _volume = 0.7;
 try { _muted = localStorage.getItem(MUTE_KEY) === "1"; } catch {}
-try {
-  const v = parseFloat(localStorage.getItem(VOL_KEY) ?? "");
-  if (!isNaN(v) && v >= 0 && v <= 1) _volume = v;
-} catch {}
+try { const v = parseFloat(localStorage.getItem(VOL_KEY) ?? ""); if (!isNaN(v) && v >= 0 && v <= 1) _volume = v; } catch {}
 
-// Preloaded kaynaklar
-const clickSound = new Audio("/sfx/click.wav");  clickSound.preload = "auto";
-const matchSound = new Audio("/sfx/match.wav");  matchSound.preload = "auto";
-const comboSound = new Audio("/sfx/combo.wav");  comboSound.preload = "auto";
-const errorSound = new Audio("/sfx/error.wav");  errorSound.preload = "auto";
-const undoSound  = new Audio("/sfx/undo.wav");   undoSound.preload  = "auto";
-const winSound   = new Audio("/sfx/win.wav");    winSound.preload   = "auto";
+// Autoplay kilidini ac: ilk click/touch'ta bos bir ses cal
+const unlock = () => {
+  const silent = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAgAQAAAAZGF0YQ==");
+  silent.volume = 0;
+  silent.play().catch(() => {});
+  document.removeEventListener("click", unlock);
+  document.removeEventListener("touchstart", unlock);
+};
+document.addEventListener("click", unlock, { once: true });
+document.addEventListener("touchstart", unlock, { once: true });
 
-function playClick() {
+// Ses dosyalari yollari
+const SFX = {
+  tileClick: "/assets/sounds/tile_click.wav",
+  tileBreak: "/assets/sounds/tile_break.wav",
+  combo:     "/assets/sounds/combo.wav",
+};
+
+function playSound(path: string, volumeScale = 0.7): void {
   if (_muted) return;
-  const s = clickSound.cloneNode() as HTMLAudioElement;
-  s.volume = _volume * 0.6;
-  s.play().catch(() => {});
-}
-
-function playMatch() {
-  if (_muted) return;
-  const s = matchSound.cloneNode() as HTMLAudioElement;
-  s.volume = _volume;
-  s.play().catch(() => {});
-}
-
-function playCombo(level = 1) {
-  if (_muted) return;
-  const s = comboSound.cloneNode() as HTMLAudioElement;
-  s.volume = _volume * Math.min(0.7 + level * 0.08, 1);
-  s.play().catch(() => {});
-}
-
-function playError() {
-  if (_muted) return;
-  const s = errorSound.cloneNode() as HTMLAudioElement;
-  s.volume = _volume;
-  s.play().catch(() => {});
-}
-
-function playUndo() {
-  if (_muted) return;
-  const s = undoSound.cloneNode() as HTMLAudioElement;
-  s.volume = _volume;
-  s.play().catch(() => {});
-}
-
-function playWin() {
-  if (_muted) return;
-  const s = winSound.cloneNode() as HTMLAudioElement;
-  s.volume = _volume;
-  s.play().catch(() => {});
+  const sound = new Audio(path);
+  sound.volume = Math.min(1, _volume * volumeScale);
+  sound.currentTime = 0;
+  sound.play().catch(() => {});
 }
 
 function playSfx(name: string, comboLevel?: number): void {
@@ -70,44 +41,35 @@ function playSfx(name: string, comboLevel?: number): void {
     case "pick":
     case "tileclick":
     case "hint":
-      playClick(); break;
+      playSound(SFX.tileClick, 0.5);
+      break;
     case "match":
-      playMatch(); break;
+      playSound(SFX.tileBreak, 0.8);
+      break;
     case "combo":
-      playCombo(comboLevel); break;
+      playSound(SFX.combo, Math.min(0.7 + (comboLevel ?? 1) * 0.08, 1));
+      break;
     case "lose":
     case "error":
-      playError(); break;
+      playSound(SFX.tileBreak, 0.4);
+      break;
     case "win":
-      playWin(); break;
+      playSound(SFX.combo, 1.0);
+      break;
     case "undo":
-      playUndo(); break;
+      playSound(SFX.tileClick, 0.3);
+      break;
     case "shuffle":
-      playMatch(); break;
+      playSound(SFX.tileBreak, 0.3);
+      break;
   }
 }
 
-function isMuted(): boolean { return _muted; }
-
-function setMuted(v: boolean) {
-  _muted = v;
-  try { localStorage.setItem(MUTE_KEY, v ? "1" : "0"); } catch {}
-}
-
-function toggleMute(): boolean { setMuted(!_muted); return _muted; }
-
-function setVolume(v: number) {
-  _volume = Math.max(0, Math.min(1, v));
-  try { localStorage.setItem(VOL_KEY, _volume.toString()); } catch {}
-}
-
-function getVolume(): number { return _volume; }
-
 export const SoundEngine = {
-  isMuted,
-  setMuted,
-  toggleMute,
-  setVolume,
-  getVolume,
+  isMuted: () => _muted,
+  setMuted: (v: boolean) => { _muted = v; try { localStorage.setItem(MUTE_KEY, v ? "1" : "0"); } catch {} },
+  toggleMute: () => { _muted = !_muted; try { localStorage.setItem(MUTE_KEY, _muted ? "1" : "0"); } catch {} return _muted; },
+  setVolume: (v: number) => { _volume = Math.max(0, Math.min(1, v)); try { localStorage.setItem(VOL_KEY, _volume.toString()); } catch {} },
+  getVolume: () => _volume,
   play: playSfx,
 };
