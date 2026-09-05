@@ -23,9 +23,9 @@ document.addEventListener("touchstart", unlock, { once: true });
 
 // Ses dosyalari yollari
 const SFX = {
-  tileClick: "/assets/sounds/tile_click.wav",
-  tileBreak: "/assets/sounds/tile_break.wav",
-  combo:     "/assets/sounds/combo.wav",
+  tileClick: "/assets/sounds/tile_click.mp3",
+  tileBreak: "/assets/sounds/tile_break.mp3",
+  combo:     "/assets/sounds/combo.mp3",
 };
 
 function playSound(path: string, volumeScale = 0.7): void {
