@@ -1,91 +1,92 @@
 /**
  * Otuken Mahjong — Basit Ses Motoru (HTML5 Audio).
- * CDN/yerel MP3 dosyaları, preload + cloneNode pooling.
+ * Preload + cloneNode ile sıfır gecikme, havuz yok.
  */
 
 const MUTE_KEY = "otuken_mahjong_mute";
 const VOL_KEY = "otuken_mahjong_vol";
 
-// MP3 dosya yollari (public/sfx/ altinda)
-const SFX_BASE = "/sfx";
-const SFX = {
-  click:  `${SFX_BASE}/click.wav`,
-  match:  `${SFX_BASE}/match.wav`,
-  combo:  `${SFX_BASE}/combo.wav`,
-  error:  `${SFX_BASE}/error.wav`,
-  undo:   `${SFX_BASE}/undo.wav`,
-  win:    `${SFX_BASE}/win.wav`,
-} as const;
-
-// Preloaded Audio havuzu
-const pool: Map<string, HTMLAudioElement[]> = new Map();
-const sources: Record<string, HTMLAudioElement> = {};
-
 let _muted = false;
 let _volume = 0.6;
 
-// localStorage'dan mute/volume oku
 try { _muted = localStorage.getItem(MUTE_KEY) === "1"; } catch {}
 try {
   const v = parseFloat(localStorage.getItem(VOL_KEY) ?? "");
   if (!isNaN(v) && v >= 0 && v <= 1) _volume = v;
 } catch {}
 
-/** Tek bir ses dosyasini preload eder. */
-function preload(key: string, url: string): HTMLAudioElement {
-  const a = new Audio(url);
-  a.preload = "auto";
-  a.load();
-  sources[key] = a;
-  pool.set(key, []);
-  return a;
+// Preloaded kaynaklar
+const clickSound = new Audio("/sfx/click.wav");  clickSound.preload = "auto";
+const matchSound = new Audio("/sfx/match.wav");  matchSound.preload = "auto";
+const comboSound = new Audio("/sfx/combo.wav");  comboSound.preload = "auto";
+const errorSound = new Audio("/sfx/error.wav");  errorSound.preload = "auto";
+const undoSound  = new Audio("/sfx/undo.wav");   undoSound.preload  = "auto";
+const winSound   = new Audio("/sfx/win.wav");    winSound.preload   = "auto";
+
+function playClick() {
+  if (_muted) return;
+  const s = clickSound.cloneNode() as HTMLAudioElement;
+  s.volume = _volume * 0.6;
+  s.play().catch(() => {});
 }
 
-/** Tum sesleri onceden yukle. */
-function init(): void {
-  for (const [key, url] of Object.entries(SFX)) {
-    preload(key, url);
+function playMatch() {
+  if (_muted) return;
+  const s = matchSound.cloneNode() as HTMLAudioElement;
+  s.volume = _volume;
+  s.play().catch(() => {});
+}
+
+function playCombo(level = 1) {
+  if (_muted) return;
+  const s = comboSound.cloneNode() as HTMLAudioElement;
+  s.volume = _volume * Math.min(0.7 + level * 0.08, 1);
+  s.play().catch(() => {});
+}
+
+function playError() {
+  if (_muted) return;
+  const s = errorSound.cloneNode() as HTMLAudioElement;
+  s.volume = _volume;
+  s.play().catch(() => {});
+}
+
+function playUndo() {
+  if (_muted) return;
+  const s = undoSound.cloneNode() as HTMLAudioElement;
+  s.volume = _volume;
+  s.play().catch(() => {});
+}
+
+function playWin() {
+  if (_muted) return;
+  const s = winSound.cloneNode() as HTMLAudioElement;
+  s.volume = _volume;
+  s.play().catch(() => {});
+}
+
+function playSfx(name: string, comboLevel?: number): void {
+  switch (name) {
+    case "pick":
+    case "tileclick":
+    case "hint":
+      playClick(); break;
+    case "match":
+      playMatch(); break;
+    case "combo":
+      playCombo(comboLevel); break;
+    case "lose":
+    case "error":
+      playError(); break;
+    case "win":
+      playWin(); break;
+    case "undo":
+      playUndo(); break;
+    case "shuffle":
+      playMatch(); break;
   }
 }
 
-/** Pool'dan bos bir Audio klonu al veya yeniden olustur. */
-function borrow(key: string): HTMLAudioElement {
-  const p = pool.get(key);
-  if (p && p.length > 0) return p.pop()!;
-  // Kaynak yoksa orijinali klonla
-  const src = sources[key];
-  if (!src) return new Audio();
-  const clone = src.cloneNode(true) as HTMLAudioElement;
-  return clone;
-}
-
-/** Kullanilan Audio'yu pool'a iade et (onended ile). */
-function release(key: string, el: HTMLAudioElement): void {
-  el.onended = null;
-  el.onerror = null;
-  const p = pool.get(key);
-  if (p && p.length < 4) p.push(el); // max 4 havuzda tut
-}
-
-/** Temel caldirma fonksiyonu. */
-function play(key: string, volumeScale = 1.0): void {
-  if (_muted) return;
-  const el = borrow(key);
-  el.volume = Math.min(1, _volume * volumeScale);
-  el.currentTime = 0;
-
-  el.onended = () => release(key, el);
-  el.onerror = () => release(key, el);
-
-  el.play().catch(() => {
-    // Autoplay restriction: sessizce yut
-    release(key, el);
-  });
-}
-
-// ------------------------------------------------------------------
-// Public API
-// ------------------------------------------------------------------
 function isMuted(): boolean { return _muted; }
 
 function setMuted(v: boolean) {
@@ -93,10 +94,7 @@ function setMuted(v: boolean) {
   try { localStorage.setItem(MUTE_KEY, v ? "1" : "0"); } catch {}
 }
 
-function toggleMute(): boolean {
-  setMuted(!_muted);
-  return _muted;
-}
+function toggleMute(): boolean { setMuted(!_muted); return _muted; }
 
 function setVolume(v: number) {
   _volume = Math.max(0, Math.min(1, v));
@@ -105,37 +103,7 @@ function setVolume(v: number) {
 
 function getVolume(): number { return _volume; }
 
-function playSfx(name: string, comboLevel?: number): void {
-  switch (name) {
-    case "pick":
-    case "tileclick":
-    case "hint":
-      play("click");
-      break;
-    case "match":
-      play("match");
-      break;
-    case "combo":
-      play("combo", 0.7 + Math.min((comboLevel ?? 1) * 0.08, 0.3));
-      break;
-    case "lose":
-    case "error":
-      play("error");
-      break;
-    case "win":
-      play("win");
-      break;
-    case "undo":
-      play("undo");
-      break;
-    case "shuffle":
-      play("match", 0.5);
-      break;
-  }
-}
-
 export const SoundEngine = {
-  init,
   isMuted,
   setMuted,
   toggleMute,
