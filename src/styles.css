@@ -1,5 +1,6 @@
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
@@ -7,27 +8,34 @@ body,
 #root {
   margin: 0;
   height: 100%;
+  height: 100dvh;
   background: #081820;
   font-family: "Segoe UI", Georgia, system-ui, serif;
   color: #e8f2f8;
   overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .game-shell {
   height: 100%;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  padding: 16px;
+  gap: 10px;
+  padding: env(safe-area-inset-top, 8px) env(safe-area-inset-right, 8px) env(safe-area-inset-bottom, 8px) env(safe-area-inset-left, 8px);
+  padding-top: calc(env(safe-area-inset-top, 8px) + 4px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 8px) + 4px);
 }
 
 .arena {
   position: relative;
-  width: min(440px, 94vw);
+  width: min(440px, 96vw);
   aspect-ratio: 9 / 16;
-  max-height: 92vh;
+  max-height: calc(100dvh - 140px);
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 22px 70px rgba(0, 0, 0, 0.65);
@@ -35,6 +43,8 @@ body,
   cursor: pointer;
   user-select: none;
   touch-action: manipulation;
+  flex: 1;
+  min-height: 0;
 }
 
 .arena-canvas {
@@ -46,48 +56,61 @@ body,
 .win-banner {
   position: absolute;
   inset: 0;
-  background: rgba(8, 24, 32, 0.88);
+  background: rgba(8, 24, 32, 0.92);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: 16px;
   text-align: center;
+  padding: 16px;
 }
 
 .win-title {
-  font-size: 58px;
+  font-size: clamp(32px, 10vw, 58px);
   font-weight: 800;
   color: #ffd24a;
   text-shadow: 0 4px 20px rgba(255, 210, 74, 0.5);
 }
 
 .win-sub {
-  font-size: 18px;
+  font-size: clamp(13px, 3.5vw, 18px);
   color: #bcd8ea;
-  max-width: 70%;
+  max-width: 85%;
 }
 
+.win-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ---- Toolbar (alt kisim) ---- */
 .toolbar {
   display: flex;
-  gap: 10px;
+  gap: 6px;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  max-width: 94vw;
+  max-width: 96vw;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .level-picker {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
   justify-content: center;
+  max-width: 96vw;
 }
 
 .lvl {
-  min-width: 38px;
-  padding: 10px 0;
+  min-width: 34px;
+  min-height: 38px;
+  padding: 8px 4px;
   text-align: center;
+  font-size: 13px;
 }
 
 .lvl.active {
@@ -95,34 +118,34 @@ body,
   color: #1a1200;
 }
 
-.win-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.btn.ghost {
-  background: transparent;
-  border: 2px solid #d4af37;
-  color: #d4af37;
-}
-
+/* ---- Genel buton ---- */
 .btn {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
-  padding: 10px 22px;
+  padding: 10px 18px;
   border: none;
   border-radius: 10px;
   cursor: pointer;
   background: #d4af37;
   color: #1a1200;
   transition: transform 0.1s, filter 0.1s;
+  min-height: 44px;
+  min-width: 44px;
 }
 .btn:hover {
   transform: translateY(-2px);
   filter: brightness(1.06);
 }
+.btn:active {
+  transform: scale(0.95);
+}
+.btn.ghost {
+  background: transparent;
+  border: 2px solid #d4af37;
+  color: #d4af37;
+}
 .tbtn {
-  font-size: 14px;
+  font-size: 12px;
   background: #1c3a4c;
   color: #d4e8f2;
 }
@@ -136,16 +159,16 @@ body,
   border: 2px solid rgba(212,175,55,0.5);
   color: #f5ecd8;
   border-radius: 50%;
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   padding: 0;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 1px;
   position: relative;
   overflow: visible;
   box-shadow:
@@ -200,13 +223,13 @@ body,
   line-height: 1;
 }
 
-/* ---- Hoparlor butonu (sag ust) ---- */
+/* ---- Ses butonu (sol ust) ---- */
 .mute-btn {
   background: linear-gradient(145deg, #8b6530, #6b4820);
   border: 2px solid rgba(212,175,55,0.5);
   border-radius: 50%;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   color: #f5ecd8;
   padding: 0;
   cursor: pointer;
@@ -243,7 +266,7 @@ body,
 .volume-slider {
   -webkit-appearance: none;
   appearance: none;
-  width: 70px;
+  width: 60px;
   height: 6px;
   background: linear-gradient(90deg, #8b6530, #d4af37);
   border-radius: 3px;
@@ -253,8 +276,8 @@ body,
 .volume-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: linear-gradient(145deg, #f5ecd8, #c8b898);
   border: 2px solid #8b6530;
@@ -262,8 +285,8 @@ body,
   cursor: pointer;
 }
 .volume-slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: linear-gradient(145deg, #f5ecd8, #c8b898);
   border: 2px solid #8b6530;
@@ -271,30 +294,119 @@ body,
   cursor: pointer;
 }
 
-/* ---- Mobil / dokunmatik ----
-   Tuvali ekrana yaklaştır, butonları kompaktlaştır. */
+/* ---- Mobil / dokunmatik optimizasyonlari ---- */
 @media (max-width: 560px) {
   .game-shell {
-    padding: 8px 4px;
-    gap: 10px;
+    gap: 6px;
     justify-content: flex-start;
+    padding-top: calc(env(safe-area-inset-top, 4px) + 2px);
   }
   .arena {
-    width: min(420px, 98vw);
-    border-radius: 12px;
+    width: 100vw;
+    border-radius: 0;
+    max-height: calc(100dvh - 110px);
+  }
+  .toolbar {
+    gap: 4px;
+    padding: 4px 2px;
+    padding-bottom: calc(env(safe-area-inset-bottom, 4px) + 2px);
+  }
+  .level-picker {
+    gap: 3px;
   }
   .btn {
-    font-size: 13px;
-    padding: 9px 14px;
+    font-size: 12px;
+    padding: 8px 12px;
+    min-height: 40px;
   }
   .lvl {
     min-width: 30px;
-    padding: 8px 0;
+    min-height: 34px;
+    padding: 6px 2px;
+    font-size: 12px;
+  }
+  .power-btn {
+    width: 46px;
+    height: 46px;
+    font-size: 9px;
+  }
+  .mute-btn {
+    width: 36px;
+    height: 36px;
+  }
+  .mute-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+  .volume-slider {
+    width: 50px;
   }
   .win-title {
-    font-size: 40px;
+    font-size: 32px;
   }
   .win-sub {
-    font-size: 15px;
+    font-size: 13px;
+  }
+  .win-actions .btn {
+    font-size: 13px;
+    padding: 10px 16px;
+  }
+}
+
+/* ---- Cok kucuk ekranlar ---- */
+@media (max-height: 600px) {
+  .game-shell {
+    gap: 2px;
+    padding: 2px;
+  }
+  .arena {
+    max-height: calc(100dvh - 80px);
+  }
+  .toolbar {
+    gap: 3px;
+    padding: 2px;
+  }
+  .power-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 8px;
+  }
+  .btn {
+    padding: 6px 10px;
+    min-height: 36px;
+    font-size: 11px;
+  }
+  .lvl {
+    min-width: 26px;
+    min-height: 30px;
+    padding: 4px 2px;
+    font-size: 11px;
+  }
+}
+
+/* ---- Landscape uyarlamasi ---- */
+@media (orientation: landscape) and (max-height: 500px) {
+  .game-shell {
+    flex-direction: row;
+    padding: 4px;
+    gap: 8px;
+  }
+  .arena {
+    width: auto;
+    height: calc(100dvh - 8px);
+    max-height: none;
+    aspect-ratio: auto;
+  }
+  .toolbar {
+    flex-direction: column;
+    max-height: 100vh;
+    overflow-y: auto;
+  }
+}
+
+/* ---- Klavye ipuclarini mobilde gizle ---- */
+@media (hover: none) and (pointer: coarse) {
+  .keyboard-hints {
+    display: none !important;
   }
 }

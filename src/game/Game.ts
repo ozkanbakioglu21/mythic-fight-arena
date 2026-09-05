@@ -2060,10 +2060,12 @@ export class Game {
     c.fillStyle = "#d4e8f2";
     c.fillText(`Kalan: ${remaining}/${total}   Hamle: ${this.moves}   Süre: ${Math.floor(this.seconds)} sn   Karıştır: ${this.maxShuffles - this.shuffleCount}`, CANVAS_W / 2, barY + 48);
 
-    // Alttaki kısayollar (haznenin üstü).
-    c.fillStyle = "rgba(200,145,80,0.65)";
-    c.font = "15px Georgia";
-    c.fillText("[Yeni Oyun] N   [Geri Al] U   [Sonraki] L", CANVAS_W / 2, CANVAS_H - 60);
+    // Alttaki kısayollar (haznenin üstü) - sadece masaustu
+    if (!("ontouchstart" in window)) {
+      c.fillStyle = "rgba(200,145,80,0.65)";
+      c.font = "15px Georgia";
+      c.fillText("[Yeni Oyun] N   [Geri Al] U   [Sonraki] L", CANVAS_W / 2, CANVAS_H - 60);
+    }
     // ---- Kayip ekrani ----
     if (this.lost) {
       c.fillStyle = "rgba(30,5,5,0.55)";
@@ -2126,8 +2128,10 @@ export class Game {
       c.font = "bold 19px Georgia";
       c.fillStyle = "#9fd0e0";
       c.fillText(`Puan: ${this.score}   Hamle: ${this.moves}   Süre: ${Math.floor(this.seconds)} sn`, CANVAS_W / 2, CANVAS_H / 2 + 24);
-      c.font = "bold 20px Georgia";
-      c.fillText("[Sonraki Seviye] L    [Yeniden Oyna] N", CANVAS_W / 2, CANVAS_H / 2 + 60);
+      if (!("ontouchstart" in window)) {
+        c.font = "bold 20px Georgia";
+        c.fillText("[Sonraki Seviye] L    [Yeniden Oyna] N", CANVAS_W / 2, CANVAS_H / 2 + 60);
+      }
       let bestLine = "";
       try {
         const b = localStorage.getItem("otuken_" + this.levelIndex + "_best");
