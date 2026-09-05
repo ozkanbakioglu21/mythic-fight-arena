@@ -228,8 +228,8 @@ body,
   background: linear-gradient(145deg, #8b6530, #6b4820);
   border: 2px solid rgba(212,175,55,0.5);
   border-radius: 50%;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   color: #f5ecd8;
   padding: 0;
   cursor: pointer;
@@ -249,35 +249,35 @@ body,
   transform: scale(0.92);
 }
 .mute-btn svg {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
 }
 
 .sound-controls {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  top: 6px;
+  left: 6px;
   z-index: 10;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .volume-slider {
   -webkit-appearance: none;
   appearance: none;
-  width: 60px;
-  height: 6px;
+  width: 48px;
+  height: 4px;
   background: linear-gradient(90deg, #8b6530, #d4af37);
-  border-radius: 3px;
+  border-radius: 2px;
   outline: none;
   cursor: pointer;
 }
 .volume-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: linear-gradient(145deg, #f5ecd8, #c8b898);
   border: 2px solid #8b6530;
@@ -285,8 +285,8 @@ body,
   cursor: pointer;
 }
 .volume-slider::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: linear-gradient(145deg, #f5ecd8, #c8b898);
   border: 2px solid #8b6530;
@@ -331,15 +331,15 @@ body,
     font-size: 9px;
   }
   .mute-btn {
-    width: 36px;
-    height: 36px;
+    width: 28px;
+    height: 28px;
   }
   .mute-btn svg {
-    width: 18px;
-    height: 18px;
+    width: 14px;
+    height: 14px;
   }
   .volume-slider {
-    width: 50px;
+    width: 40px;
   }
   .win-title {
     font-size: 32px;
