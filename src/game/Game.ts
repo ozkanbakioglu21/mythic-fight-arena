@@ -726,6 +726,17 @@ export class Game {
   }
 
   undo(): void {
+    // Hazneden son tasi geri yerine koy
+    if (this.tray.length > 0) {
+      const last = this.tray.pop()!;
+      const tile = this.tiles.find((t) => t.id === last.id);
+      if (tile) tile.removed = false;
+      this.selectedId = null;
+      this.sfx("undo");
+      this.emitHud();
+      return;
+    }
+    // Hazne bossa, son eslesmeyi geri al
     const last = this.history.pop();
     if (!last) return;
     const a = this.tiles.find((t) => t.id === last.a);
