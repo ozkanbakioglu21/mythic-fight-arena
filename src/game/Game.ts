@@ -371,6 +371,12 @@ export class Game {
   private motto = "";
   private faceCache = new Map<string, HTMLCanvasElement>();
   private matchFx: { x1: number; y1: number; x2: number; y2: number; timer: number; max: number } | null = null;
+  private shakeAmount = 0;
+  private shakeX = 0;
+  private shakeY = 0;
+  private dustParticles: Array<{ x: number; y: number; vx: number; vy: number; r: number; alpha: number; ph: number }> = [];
+  private floatingTexts: Array<{ x: number; y: number; life: number; max: number; text: string; color: string; size: number }> = [];
+  private clickPops: Array<{ x: number; y: number; life: number; max: number; r: number }> = [];
 
   onHud?: (h: HudState) => void;
 
@@ -675,6 +681,19 @@ export class Game {
     this.combo = 0;
     this.comboTimer = 0;
     this.shards = [];
+    // Ambient dust: arka plan ucusan tanecikler
+    this.dustParticles = [];
+    for (let i = 0; i < 30; i++) {
+      this.dustParticles.push({
+        x: Math.random() * CANVAS_W,
+        y: Math.random() * CANVAS_H,
+        vx: (Math.random() - 0.5) * 8,
+        vy: -4 - Math.random() * 10,
+        r: 0.8 + Math.random() * 1.5,
+        alpha: 0.08 + Math.random() * 0.12,
+        ph: Math.random() * Math.PI * 2,
+      });
+    }
     this.shuffleCount = 0;
     this.hintIds = [];
     this.confetti = [];
@@ -807,6 +826,33 @@ export class Game {
       // Eslesme VFX: iki tas arasinda altin huzme
       if (matchBoardTile) {
         this.matchFx = { x1: matchBoardTile.sx, y1: matchBoardTile.sy, x2: target.sx, y2: target.sy, timer: 0.35, max: 0.35 };
+        // Screen shake
+        this.shakeAmount = 6;
+        // Floating score text
+        const mx = (matchBoardTile.sx + target.sx) / 2;
+        const my = (matchBoardTile.sy + target.sy) / 2;
+        const pts = Math.round(100 * (1 + (this.combo) * 0.15) * (this.combo + 1) * this.scoreMult());
+        this.floatingTexts.push({ x: mx, y: my - 15, life: 0.7, max: 0.7, text: "+" + pts, color: "#ffd75e", size: 28 });
+        if (this.combo >= 2) {
+          this.floatingTexts.push({ x: mx, y: my - 40, life: 0.9, max: 0.9, text: this.combo >= 4 ? "MÜKEMMEL!" : this.combo >= 3 ? "HARİKA!" : "KOMBO!", color: "#ff8844", size: 22 });
+        }
+        // Match parcaciklari (12-15 adet)
+        for (let i = 0; i < 14; i++) {
+          const ang = Math.random() * Math.PI * 2;
+          const spd = 80 + Math.random() * 200;
+          this.shards.push({
+            x: mx,
+            y: my,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd - 100,
+            life: 0.5 + Math.random() * 0.5,
+            max: 1,
+            color: i % 3 === 0 ? "#4fb3a0" : "#ffd75e",
+            r: 2 + Math.random() * 4,
+          });
+        }
+        // Click pop aura
+        this.clickPops.push({ x: mx, y: my, life: 0.4, max: 0.4, r: 30 });
       }
       this.breakPair(pairIdx, lastIdx);
     } else if (this.tray.length >= this.maxTray()) {
@@ -895,6 +941,29 @@ export class Game {
     }
     // Ekran parlama sonumu
     if (this.flash > 0) this.flash = Math.max(0, this.flash - dt * 1.8);
+    // Screen shake sönümü
+    if (this.shakeAmount > 0) {
+      this.shakeX = (Math.random() - 0.5) * this.shakeAmount * 2;
+      this.shakeY = (Math.random() - 0.5) * this.shakeAmount * 2;
+      this.shakeAmount = Math.max(0, this.shakeAmount - dt * 40);
+    } else {
+      this.shakeX = 0;
+      this.shakeY = 0;
+    }
+    // Floating text guncelleme
+    for (const ft of this.floatingTexts) { ft.life -= dt; ft.y -= 55 * dt; }
+    this.floatingTexts = this.floatingTexts.filter((f) => f.life > 0);
+    // Click pop aura guncelleme
+    for (const cp of this.clickPops) { cp.life -= dt; }
+    this.clickPops = this.clickPops.filter((cp) => cp.life > 0);
+    // Ambient dust guncelleme
+    for (const d of this.dustParticles) {
+      d.x += d.vx * dt + Math.sin(this.time * 0.4 + d.ph) * 6 * dt;
+      d.y += d.vy * dt;
+      if (d.y < -10) { d.y = CANVAS_H + 10; d.x = Math.random() * CANVAS_W; }
+      if (d.x < -10) d.x = CANVAS_W + 10;
+      if (d.x > CANVAS_W + 10) d.x = -10;
+    }
     // Ocak kizarlari yukari suruklenir
     for (const e of this.embers) {
       e.y -= e.vy * dt;
@@ -1619,8 +1688,20 @@ export class Game {
       c.stroke();
     }
     c.restore();
+    // Ambient dust: ucusan transparan tanecikler
+    for (const d of this.dustParticles) {
+      c.globalAlpha = d.alpha * (0.5 + 0.5 * Math.sin(this.time * 0.8 + d.ph));
+      c.fillStyle = "#c8d8d0";
+      c.beginPath();
+      c.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.globalAlpha = 1;
     this.drawMotifs(c);
     this.drawAmbient(c);
+    // Screen shake transformu
+    c.save();
+    if (this.shakeAmount > 0.1) c.translate(this.shakeX, this.shakeY);
     // Sinematik vinyet (kenar karartma).
     const vg = c.createRadialGradient(CANVAS_W / 2, CANVAS_H * 0.46, CANVAS_H * 0.28, CANVAS_W / 2, CANVAS_H * 0.5, CANVAS_H * 0.78);
     vg.addColorStop(0, "rgba(0,0,0,0)");
@@ -1754,6 +1835,22 @@ export class Game {
           c.roundRect(t.sx - this.tw / 2 - 3, (t.sy + bob + lift) - this.th / 2 - 3, this.tw + 6, this.th + 6, Math.max(5, Math.round(this.tw * 0.125) + 2));
           c.stroke();
           c.restore();
+        }
+        // Shimmer sweep: secilebilir taslarda 4sn'de bir soldan saga isik suzulmesi
+        if (canT && !sel && dk >= 1) {
+          const shimmerPhase = (this.time % 4) / 4; // 0..1 her 4 saniyede
+          const tileLocalX = (t.sx + this.tw / 2) / CANVAS_W; // 0..1 taş pozisyonu
+          const sweep = shimmerPhase * 1.6 - tileLocalX * 0.8; // dalga
+          if (sweep > 0 && sweep < 0.35) {
+            const sa = Math.sin((sweep / 0.35) * Math.PI) * 0.18;
+            c.save();
+            c.globalAlpha = sa;
+            c.fillStyle = "#ffffff";
+            c.beginPath();
+            c.roundRect(t.sx - this.tw / 2, (t.sy + bob + lift) - this.th / 2, this.tw, this.th, Math.max(4, Math.round(this.tw * 0.125)));
+            c.fill();
+            c.restore();
+          }
         }
       }
     }
@@ -2050,6 +2147,46 @@ export class Game {
       c.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * (0.45 + 0.55 * Math.abs(Math.sin(p.rot * 2))));
       c.restore();
     }
+
+    // ---- Click pop aurasi (altin dairesel dalga) ----
+    for (const cp of this.clickPops) {
+      const a = Math.max(0, cp.life / cp.max);
+      const r = cp.r * (1 + (1 - a) * 2.5);
+      c.save();
+      c.globalAlpha = a * 0.35;
+      c.strokeStyle = "#ffd75e";
+      c.lineWidth = 2.5 * a;
+      c.beginPath();
+      c.arc(cp.x, cp.y, r, 0, Math.PI * 2);
+      c.stroke();
+      c.globalAlpha = a * 0.12;
+      c.fillStyle = "#ffd75e";
+      c.fill();
+      c.restore();
+    }
+
+    // ---- Suyulen skor metinleri (3D parilti + yukari suzulme) ----
+    for (const ft of this.floatingTexts) {
+      const a = Math.max(0, ft.life / ft.max);
+      c.save();
+      c.globalAlpha = a;
+      c.textAlign = "center";
+      c.textBaseline = "middle";
+      // Golge (3D derinlik)
+      c.fillStyle = "rgba(0,0,0,0.5)";
+      c.font = "bold " + ft.size + "px Georgia";
+      c.fillText(ft.text, ft.x + 1.5, ft.y + 1.5);
+      // Ana yazi
+      c.fillStyle = ft.color;
+      c.fillText(ft.text, ft.x, ft.y);
+      // Parilti
+      c.globalAlpha = a * 0.5 * Math.sin(this.time * 12);
+      c.fillStyle = "#ffffff";
+      c.fillText(ft.text, ft.x - 0.5, ft.y - 0.5);
+      c.restore();
+    }
+
+    c.restore(); // shake transform sonu
   }
 
   private specialArt(): "mixed" | "none" {
