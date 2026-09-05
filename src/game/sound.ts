@@ -27,27 +27,59 @@ function setMuted(v: boolean) {
 function toggleMute(): boolean { setMuted(!_muted); return _muted; }
 
 // ------------------------------------------------------------------
-// 1. TAŞ KIRMA SESİ (Tok ve Dokunsal Çıt)
+// 1. TAŞ ÇARPIŞMA SESİ — Tile Clack Synthesizer
+//    İki katman: gürültü darbesi + kemik rezonans çınlaması
 // ------------------------------------------------------------------
-function playSnap(): void {
+function playWoodClick(): void {
   if (_muted) return;
   if (audioCtx.state === "suspended") audioCtx.resume();
 
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
+  const t = audioCtx.currentTime;
+  const humanize = () => 1 + (Math.random() * 0.10 - 0.05); // ±5%
 
-  osc.type = "triangle";
-  osc.frequency.setValueAtTime(320, audioCtx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.05);
+  // ---- Katman 1: Noise Burst (Gürültü Darbesi) ----
+  // 12ms beyaz gürültü → lowpass 1200Hz → çok hızlı sönümleme
+  const bufLen = Math.floor(audioCtx.sampleRate * 0.015); // 15ms
+  const noiseBuf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+  const data = noiseBuf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
 
-  gain.gain.setValueAtTime(0.8, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+  const noiseSrc = audioCtx.createBufferSource();
+  noiseSrc.buffer = noiseBuf;
 
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
+  const noiseFilter = audioCtx.createBiquadFilter();
+  noiseFilter.type = "lowpass";
+  noiseFilter.frequency.value = 1200 * humanize();
+  noiseFilter.Q.value = 0.7;
 
-  osc.start();
-  osc.stop(audioCtx.currentTime + 0.05);
+  const noiseGain = audioCtx.createGain();
+  noiseGain.gain.setValueAtTime(0.75, t);
+  noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.012);
+
+  noiseSrc.connect(noiseFilter);
+  noiseFilter.connect(noiseGain);
+  noiseGain.connect(audioCtx.destination);
+  noiseSrc.start(t);
+  noiseSrc.stop(t + 0.015);
+  noiseSrc.onended = () => { noiseSrc.disconnect(); noiseFilter.disconnect(); noiseGain.disconnect(); };
+
+  // ---- Katman 2: Resonance Click (Kemik Rezonans) ----
+  // İki triangle osilatör: 1800Hz + 2400Hz, 30ms sönümleme
+  for (const baseFreq of [1800, 2400]) {
+    const osc = audioCtx.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.value = baseFreq * humanize();
+
+    const oscGain = audioCtx.createGain();
+    oscGain.gain.setValueAtTime(0.18, t);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+
+    osc.connect(oscGain);
+    oscGain.connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + 0.035);
+    osc.onended = () => { osc.disconnect(); oscGain.disconnect(); };
+  }
 }
 
 // ------------------------------------------------------------------
@@ -156,10 +188,10 @@ function play(name: string, comboLevel?: number): void {
   switch (name) {
     case "pick":
     case "tileclick":
-      playSnap();
+      playWoodClick();
       break;
     case "match":
-      playSnap();
+      playWoodClick();
       break;
     case "combo":
       playCombo(comboLevel ?? 1);
@@ -174,7 +206,7 @@ function play(name: string, comboLevel?: number): void {
       playPlace();
       break;
     case "hint":
-      playSnap();
+      playWoodClick();
       break;
     case "shuffle":
       playPlace();
@@ -187,7 +219,7 @@ export const SoundEngine = {
   setMuted,
   toggleMute,
   play,
-  playSnap,
+  playWoodClick,
   playPlace,
   playSuccess,
   playCombo,
