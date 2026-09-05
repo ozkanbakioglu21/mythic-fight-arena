@@ -13,10 +13,8 @@ try { const v = parseFloat(localStorage.getItem(VOL_KEY) ?? ""); if (!isNaN(v) &
 // Preloaded kaynaklar
 const tileClickSound = new Audio("/assets/sounds/tile_click.mp3");
 const tileBreakSound = new Audio("/assets/sounds/tile_break.mp3");
-const comboSound     = new Audio("/assets/sounds/combo.mp3");
 tileClickSound.preload = "auto";
 tileBreakSound.preload = "auto";
-comboSound.preload = "auto";
 
 // Autoplay kilidini ac
 const unlock = () => {
@@ -48,14 +46,14 @@ function playSfx(name: string, comboLevel?: number): void {
       playSound(tileBreakSound, 0.8);
       break;
     case "combo":
-      playSound(comboSound, Math.min(0.7 + (comboLevel ?? 1) * 0.08, 1));
+      playSound(tileBreakSound, Math.min(0.7 + (comboLevel ?? 1) * 0.08, 1));
       break;
     case "lose":
     case "error":
       playSound(tileBreakSound, 0.4);
       break;
     case "win":
-      playSound(comboSound, 1.0);
+      playSound(tileBreakSound, 1.0);
       break;
     case "undo":
       playSound(tileClickSound, 0.3);
