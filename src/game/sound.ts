@@ -1,93 +1,87 @@
 /**
- * Otuken Mahjong — Stüdyo Kalitesinde Ses Motoru.
- * Base64 WAV AudioBuffer ile sıfır gecikme, playback rate humanization.
+ * Otuken Mahjong — Basit Ses Motoru (HTML5 Audio).
+ * CDN/yerel MP3 dosyaları, preload + cloneNode pooling.
  */
-import { TILE_CLICK_WAV, TILE_MATCH_WAV, COMBO_WAV, ERROR_WAV, UNDO_WAV } from "./sounds-data";
 
 const MUTE_KEY = "otuken_mahjong_mute";
+const VOL_KEY = "otuken_mahjong_vol";
 
-let audioCtx: AudioContext | null = null;
-let masterGain: GainNode | null = null;
+// MP3 dosya yollari (public/sfx/ altinda)
+const SFX_BASE = "/sfx";
+const SFX = {
+  click:  `${SFX_BASE}/click.wav`,
+  match:  `${SFX_BASE}/match.wav`,
+  combo:  `${SFX_BASE}/combo.wav`,
+  error:  `${SFX_BASE}/error.wav`,
+  undo:   `${SFX_BASE}/undo.wav`,
+  win:    `${SFX_BASE}/win.wav`,
+} as const;
+
+// Preloaded Audio havuzu
+const pool: Map<string, HTMLAudioElement[]> = new Map();
+const sources: Record<string, HTMLAudioElement> = {};
+
 let _muted = false;
-let _volume = 0.75; // 0..1
-let buffers: Map<string, AudioBuffer[]> = new Map();
+let _volume = 0.6;
 
-function ensureCtx(): AudioContext {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    masterGain = audioCtx.createGain();
-    masterGain.gain.value = _volume;
-    masterGain.connect(audioCtx.destination);
+// localStorage'dan mute/volume oku
+try { _muted = localStorage.getItem(MUTE_KEY) === "1"; } catch {}
+try {
+  const v = parseFloat(localStorage.getItem(VOL_KEY) ?? "");
+  if (!isNaN(v) && v >= 0 && v <= 1) _volume = v;
+} catch {}
+
+/** Tek bir ses dosyasini preload eder. */
+function preload(key: string, url: string): HTMLAudioElement {
+  const a = new Audio(url);
+  a.preload = "auto";
+  a.load();
+  sources[key] = a;
+  pool.set(key, []);
+  return a;
+}
+
+/** Tum sesleri onceden yukle. */
+function init(): void {
+  for (const [key, url] of Object.entries(SFX)) {
+    preload(key, url);
   }
-  if (audioCtx.state === "suspended") audioCtx.resume();
-  return audioCtx;
 }
 
-function ensureBuffers(): Map<string, AudioBuffer[]> {
-  if (buffers.size > 0) return buffers;
-  const ctx = ensureCtx();
-
-  // Pre-decode all sounds
-  const decodeAll = async (key: string, wavArr: string[]) => {
-    const decoded: AudioBuffer[] = [];
-    for (const wav of wavArr) {
-      const base64 = wav.split(",")[1];
-      const binary = atob(base64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      const ab = bytes.buffer;
-      try {
-        const audioBuf = await ctx.decodeAudioData(ab);
-        decoded.push(audioBuf);
-      } catch { /* skip bad buffer */ }
-    }
-    buffers.set(key, decoded);
-  };
-
-  // Fire all decode promises — they resolve before first user click typically
-  decodeAll("tileclick", TILE_CLICK_WAV);
-  decodeAll("match", TILE_MATCH_WAV);
-  decodeAll("combo", COMBO_WAV);
-  decodeAll("error", ERROR_WAV);
-  decodeAll("undo", UNDO_WAV);
-
-  return buffers;
+/** Pool'dan bos bir Audio klonu al veya yeniden olustur. */
+function borrow(key: string): HTMLAudioElement {
+  const p = pool.get(key);
+  if (p && p.length > 0) return p.pop()!;
+  // Kaynak yoksa orijinali klonla
+  const src = sources[key];
+  if (!src) return new Audio();
+  const clone = src.cloneNode(true) as HTMLAudioElement;
+  return clone;
 }
 
-function playBuffer(key: string, volumeScale = 1.0): void {
+/** Kullanilan Audio'yu pool'a iade et (onended ile). */
+function release(key: string, el: HTMLAudioElement): void {
+  el.onended = null;
+  el.onerror = null;
+  const p = pool.get(key);
+  if (p && p.length < 4) p.push(el); // max 4 havuzda tut
+}
+
+/** Temel caldirma fonksiyonu. */
+function play(key: string, volumeScale = 1.0): void {
   if (_muted) return;
-  const ctx = ensureCtx();
-  const bufs = ensureBuffers().get(key);
-  if (!bufs || bufs.length === 0) return;
+  const el = borrow(key);
+  el.volume = Math.min(1, _volume * volumeScale);
+  el.currentTime = 0;
 
-  const buf = bufs[Math.floor(Math.random() * bufs.length)];
-  const src = ctx.createBufferSource();
-  src.buffer = buf;
+  el.onended = () => release(key, el);
+  el.onerror = () => release(key, el);
 
-  // Humanization: ±5% playback rate
-  src.playbackRate.value = 0.95 + Math.random() * 0.10;
-
-  const gain = ctx.createGain();
-  gain.gain.value = volumeScale;
-
-  src.connect(gain);
-  gain.connect(masterGain!);
-  src.start();
-
-  // Auto-disconnect for polyphony
-  src.onended = () => { src.disconnect(); gain.disconnect(); };
+  el.play().catch(() => {
+    // Autoplay restriction: sessizce yut
+    release(key, el);
+  });
 }
-
-// ------------------------------------------------------------------
-// Autoplay fix
-// ------------------------------------------------------------------
-const unlock = () => {
-  ensureCtx();
-  document.removeEventListener("click", unlock);
-  document.removeEventListener("touchstart", unlock);
-};
-document.addEventListener("click", unlock, { once: true });
-document.addEventListener("touchstart", unlock, { once: true });
 
 // ------------------------------------------------------------------
 // Public API
@@ -96,57 +90,56 @@ function isMuted(): boolean { return _muted; }
 
 function setMuted(v: boolean) {
   _muted = v;
-  try { localStorage.setItem(MUTE_KEY, v ? "1" : "0"); } catch { /* ignore */ }
+  try { localStorage.setItem(MUTE_KEY, v ? "1" : "0"); } catch {}
 }
 
-function toggleMute(): boolean { setMuted(!_muted); return _muted; }
+function toggleMute(): boolean {
+  setMuted(!_muted);
+  return _muted;
+}
 
 function setVolume(v: number) {
   _volume = Math.max(0, Math.min(1, v));
-  if (masterGain) masterGain.gain.value = _volume;
+  try { localStorage.setItem(VOL_KEY, _volume.toString()); } catch {}
 }
 
 function getVolume(): number { return _volume; }
 
-function play(name: string, comboLevel?: number): void {
+function playSfx(name: string, comboLevel?: number): void {
   switch (name) {
     case "pick":
     case "tileclick":
-      playBuffer("tileclick");
+    case "hint":
+      play("click");
       break;
     case "match":
-      playBuffer("match", 1.0);
+      play("match");
       break;
     case "combo":
-      playBuffer("combo", 0.7 + Math.min((comboLevel ?? 1) * 0.08, 0.3));
+      play("combo", 0.7 + Math.min((comboLevel ?? 1) * 0.08, 0.3));
       break;
     case "lose":
-      playBuffer("error");
+    case "error":
+      play("error");
       break;
     case "win":
-      playBuffer("combo", 1.0);
+      play("win");
       break;
     case "undo":
-      playBuffer("undo");
-      break;
-    case "hint":
-      playBuffer("tileclick", 0.6);
+      play("undo");
       break;
     case "shuffle":
-      playBuffer("match", 0.5);
+      play("match", 0.5);
       break;
   }
 }
 
-// Load mute state from localStorage
-try { _muted = localStorage.getItem(MUTE_KEY) === "1"; } catch { /* ignore */ }
-
 export const SoundEngine = {
+  init,
   isMuted,
   setMuted,
   toggleMute,
-  play,
   setVolume,
   getVolume,
-  ensureBuffers,
+  play: playSfx,
 };
